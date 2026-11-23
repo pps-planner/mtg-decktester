@@ -206,6 +206,13 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 .slash{position:absolute;left:-20%;top:50%;width:140%;height:4px;background:linear-gradient(90deg,transparent,#fff 40%,var(--fc,#fff) 60%,transparent);pointer-events:none;border-radius:2px}
 .sflash{position:absolute;inset:0;background:var(--fc,#fff);pointer-events:none;mix-blend-mode:screen}
 @media (prefers-reduced-motion:reduce){.fig,.fig *,.fig::before,.fig::after,#stage::before{animation:none!important}}
+#stackBar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(18,20,27,.98);border-top:2px solid var(--gold);padding:8px 12px 12px;box-shadow:0 -8px 24px #000a;max-height:46vh;overflow:auto}
+#stackBar .sth{display:flex;justify-content:space-between;align-items:center;color:var(--gold);margin-bottom:6px}
+#stackBar .sti{display:flex;flex-direction:column;gap:5px}
+#stackBar .sit{display:flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:4px 8px 4px 4px;font-size:13px;opacity:.75}
+#stackBar .sit.top{border-color:var(--gold);opacity:1}
+#stackBar .sit img{width:28px;height:39px;object-fit:cover;border-radius:3px}
+#stackBar .sit .small{color:var(--mute)}
 .empty{color:var(--mute);text-align:center;padding:26px 10px}
 </style>
 </head>
@@ -851,6 +858,9 @@ let resolving=false;
 async function resolveQueue(){
   if(!game||resolving)return;resolving=true;let n=0;
   try{
+    if(ORDERTRIG&&!game.auto&&!pending&&game.queue.length>1&&game.queue.length<=8&&new Set(game.queue.map(q=>q.s.id)).size>1){
+      const q=game.queue.slice();const ids=await choose('Trigger-Reihenfolge: in der gewünschten Reihenfolge antippen',q.map((x,i)=>({id:i+1,label:cd(x.s).n,img:instImg(x.s)})),{max:99,note:'Nicht gewählte Trigger folgen danach in der ursprünglichen Reihenfolge.'});
+      const first=ids.map(i=>q[i-1]).filter(Boolean);game.queue=[...first,...game.queue.filter(x=>!first.includes(x))];}
     while(game.queue.length){
       if(++n>3000){game.queue=[];logm('⚠ Über 3000 Trigger – Schleife gestoppt (Endlos-Combo?)');break}
       const it=game.queue.shift();
@@ -1020,7 +1030,7 @@ function newGame(onPlay){
   const nOpp=(game&&game.nOpp)||(fmt()==='commander'?3:1);
   game={library:shuffle(lib),hand:[],bf:[],gy:[],ex:[],cmd:deck.commander.flatMap(e=>Array.from({length:e.qty},()=>inst(e.name,{commander:true}))),
     turn:0,life:L,onPlay:onPlay!==undefined?onPlay:(game?game.onPlay:true),mulls:0,bottom:0,phase:'mull',log:[],tax:{},landsPlayed:0,tip:'',
-    nOpp,opps:Array.from({length:nOpp},(_,i)=>({name:'Gegner '+(i+1),life:L})),focus:0,pool:0,res:{},dmg:0,won:0,queue:[],once:{},delayed:[],discTurn:0,drawnTurn:0,modesTurn:{},auto:game?!!game.auto:false};
+    nOpp,opps:Array.from({length:nOpp},(_,i)=>({name:'Gegner '+(i+1),life:L})),focus:0,pool:0,res:{},dmg:0,won:0,stack:[],queue:[],once:{},delayed:[],discTurn:0,drawnTurn:0,modesTurn:{},auto:game?!!game.auto:false};
   drawN(7,true);logm('Neues Spiel – 7 Karten gezogen.');net.first=false;renderGame();if(table)setTimeout(netSync,0);
 }
 function logm(t){game.log.unshift((game.turn?`Z${game.turn}: `:'')+t);game.log=game.log.slice(0,80)}
@@ -1248,7 +1258,7 @@ function abilities(c){
   if(c.lander)out.push({l:'{2}, opfern: Standardland suchen',run:async()=>{detach(c);await searchLib({title:'Lander: Standardland',filter:basicLand,tapped:true})}});
   const fx=fxOf(n);
   if(fx&&fx.act)fx.act.forEach(a=>{const I=a.if||{};if(I.level&&(c.level||1)!==I.level)return;if(I.front&&c.tf)return;if(I.back&&!c.tf)return;
-    out.push({l:a.l,run:async()=>{if(!await payCost(c,a.cost||{}))return;await runActions(a.do,{src:c,ctx:{}});await resolveQueue()}})});
+    out.push({l:a.l,run:async()=>{if(!await payCost(c,a.cost||{}))return;if(stackOn()&&!a.do.every(x=>'mana' in x)){await stackPut({kind:'ability',c,name:cd(c).n+': '+a.l.slice(0,34),acts:a.do});return}await runActions(a.do,{src:c,ctx:{}});await resolveQueue()}})});
   const eq=fx&&fx.static&&fx.static.equip;
   if(eq)out.push({l:`Ausrüsten ${eq}`,run:async()=>{const list=game.bf.filter(isCreatureInst);const ids=await choose('Ausrüsten: welche Kreatur?',list.map(o=>({id:o.id,label:cd(o).n,img:instImg(o)})),{max:1});if(ids.length){c.attachedTo=ids[0];logm(`${c.name} → ${cd(game.bf.find(x=>x.id===ids[0])).n}`)}}});
   return out;
@@ -1263,6 +1273,11 @@ async function payCost(c,k){
 async function cast(c){
   closeSheet();const d=cd(c);const from=detach(c);emit('cast',{c,k:d.k});
   if(from==='cmd'){game.tax[c.name]=(game.tax[c.name]||0)+1}
+  if(stackOn()){await stackPut({kind:'spell',c,name:d.n});return}
+  await castResolve(c);
+}
+async function castResolve(c,item){
+  const d=cd(c);
   if(d.k.includes('Instant')||d.k.includes('Sorcery')){
     logm(`Wirkt ${d.n}`);const h=SPELL[c.name];
     const fx=fxOf(c.name);
@@ -1351,7 +1366,7 @@ function renderGame(){
     <div class="row small mute" style="margin:-4px 0 10px;gap:10px"><span>Schaden gesamt: <b style="color:var(--text)">${g.dmg}</b></span>${ojerPow()?`<span class="tag bad">Ojer aktiv: rote Pings = ${ojerPow()}</span>`:''}${(onBf('Ancient Greenwarden').length+onBf('Traveling Chocobo').length)?`<span class="tag gold">Landfall ×${1+onBf('Ancient Greenwarden').length+onBf('Traveling Chocobo').length}</span>`:''}
     <select id="nOpp" style="margin-left:auto;padding:4px 6px;font-size:12px;${g.opps.some(o=>o.peer)?'display:none':''}">${[1,2,3,4].map(n=>`<option value="${n}" ${n===g.nOpp?'selected':''}>${n} Gegner</option>`).join('')}</select></div>`;
   $('#gbar').innerHTML=`<div class="life"><button data-life="-1">−</button><b id="lifeV">${g.life}</b><button data-life="1">+</button></div>
-    <div class="chip">Zug <b>${g.turn||'–'}</b></div><div class="chip">Landdrops <b>${g.landsPlayed}/${landDrops()}</b></div><div class="chip">Mana ≈ <b>${manaAvail()}</b></div>${g.pool?`<div class="chip" data-pool style="cursor:pointer">Pool <b>${g.pool}</b> −</div>`:''}<div class="chip">Bibl. <b>${g.library.length}</b></div><label class="chip" style="cursor:pointer"><input type="checkbox" id="autoT" ${g.auto?'checked':''} style="vertical-align:-2px"> Auto-Entscheidungen</label><label class="chip" style="cursor:pointer"><input type="checkbox" id="figT" ${FIG?'checked':''} style="vertical-align:-2px"> Figuren</label>
+    <div class="chip">Zug <b>${g.turn||'–'}</b></div><div class="chip">Landdrops <b>${g.landsPlayed}/${landDrops()}</b></div><div class="chip">Mana ≈ <b>${manaAvail()}</b></div>${g.pool?`<div class="chip" data-pool style="cursor:pointer">Pool <b>${g.pool}</b> −</div>`:''}<div class="chip">Bibl. <b>${g.library.length}</b></div><label class="chip" style="cursor:pointer"><input type="checkbox" id="autoT" ${g.auto?'checked':''} style="vertical-align:-2px"> Auto-Entscheidungen</label><label class="chip" style="cursor:pointer"><input type="checkbox" id="figT" ${FIG?'checked':''} style="vertical-align:-2px"> Figuren</label><label class="chip" style="cursor:pointer"><input type="checkbox" id="ordT" ${ORDERTRIG?'checked':''} style="vertical-align:-2px"> Trigger sortieren</label>${table?`<label class="chip" style="cursor:pointer"><input type="checkbox" id="stkT" ${USESTACK?'checked':''} style="vertical-align:-2px"> Stapel</label>`:''}
     <select id="playDraw" style="margin-left:auto"><option value="1" ${g.onPlay?'selected':''}>Ich beginne</option><option value="0" ${!g.onPlay?'selected':''}>Ich ziehe zuerst</option></select>`;
   let ban='';
   if(g.won)ban+=`<div class="banner">🏆 Alle Gegner besiegt in Zug ${g.won} – ${g.dmg} Schaden insgesamt.</div>`;
@@ -1382,6 +1397,7 @@ function renderGame(){
   $('#z-gy').innerHTML=g.gy.map(c=>`<span data-id="${c.id}" data-zone="gy">🪦 ${esc(c.name)}</span>`).join('')||'<span class="mute small" style="background:none">Friedhof leer</span>';
   $('#z-ex').innerHTML=g.ex.map(c=>`<span data-id="${c.id}" data-zone="ex" ${c.vx?'style="outline:1px solid var(--gold)"':''}>${c.vx?'🔥':'✧'} ${esc(c.name)}</span>`).join('');
   $('#log').innerHTML=g.log.map(esc).join('<br>');
+  renderStack();
   pushState();
 }
 function sheet(html){net.view=null;if(pending)finishPending([]);$('#sheet').innerHTML='<button class="x" data-close>×</button>'+html;$('#ov').classList.add('on')}
@@ -1672,7 +1688,7 @@ function netState(){
   for(const c of g.bf){const d=cd(c);let b=isCreatureInst(c)?`${power(c)}/${toughness(c)||'?'}`:'';if(c.level)b+=' St.'+c.level;if(c.plan)b+=' Plan '+c.plan;
     const k=d.n+'|'+b;const e=groups.get(k)||[nstr(d.n,44),0,0,nstr(b,14),isLandInst(c)&&!isCreatureInst(c)?1:0];e[1]++;if(c.tapped)e[2]++;groups.set(k,e)}
   const st={v:1,nick:nstr(net.nick,24)||'Spieler',deck:nstr(deck.commander.map(x=>x.name).join(' + ')||'Deck',60),life:g.life,hand:g.hand.length,lib:g.library.length,turn:g.turn,ph:g.phase,
-    gyN:g.gy.length,gy:g.gy.slice(-8).map(c=>nstr(c.name,40)),cmd:g.cmd.map(c=>nstr(c.name,44)),bf:[...groups.values()],dealt:{...net.dealt},ack:{...net.seen},tok:net.tok,atk:net.atk||null,log:g.log.slice(0,4).map(l=>nstr(l,90))};
+    gyN:g.gy.length,gy:g.gy.slice(-8).map(c=>nstr(c.name,40)),cmd:g.cmd.map(c=>nstr(c.name,44)),bf:[...groups.values()],dealt:{...net.dealt},ack:{...net.seen},tok:net.tok,atk:net.atk||null,stk:(g.stack||[]).slice(0,20).map(s=>({id:s.id,n:nstr(s.name,60),k:s.kind,ts:s.ts,tg:s.tg||null})),pass:net.autoPass?'*':(net.pass||null),ctr:(net.ctr||[]).slice(-30),log:g.log.slice(0,4).map(l=>nstr(l,90))};
   const size=()=>new TextEncoder().encode(JSON.stringify(st)).length;
   if(size()>3700)st.log=[];if(size()>3700)st.gy=[];
   while(size()>3700&&st.bf.length>5)st.bf.pop();
@@ -1701,6 +1717,7 @@ function netSync(){
     }else if(game.opps.some(o=>o.peer)){game.opps=dummyOpps();game.focus=0}
     netCheckTurn();
   }
+  stackTick();
   renderNet();renderGame();
   if(net.view&&$('#ov').classList.contains('on')&&!pending)netView(net.view,true);
 }
@@ -1723,7 +1740,7 @@ async function netJoin(){
   if(!game)newGame(true);
   net.last='';pushState();netSync();
 }
-function netSync2Solo(){if(game&&game.opps.some(o=>o.peer)){game.opps=dummyOpps();game.focus=0}renderNet();if(game)renderGame()}
+function netSync2Solo(){stackTick();if(game&&game.opps.some(o=>o.peer)){game.opps=dummyOpps();game.focus=0}renderNet();if(game)renderGame()}
 async function netLeave(){const t=table;table=null;net.tok=null;net.last='';
   try{if(t&&net.lobby)await t.presence({v:null,bf:null,log:null,gy:null,tok:null,dealt:null,ack:null});else if(t&&t.leave)await t.leave()}catch(e){}
   netSync2Solo()}
@@ -1758,6 +1775,61 @@ function netView(peer,keep){
   net.view=peer;
 }
 
+/* ---------- Stapel (online) ---------- */
+let USESTACK=lsGet('mtg_stack',true),ORDERTRIG=lsGet('mtg_ord',false);
+const stackOn=()=>!!table&&USESTACK&&netOthers().length>0;
+const isCounterCard=c=>{const d=card(c.name);return /counter target (\w+ )*(spell|ability)/i.test(d.o||'')||(d.r||[]).includes('counter')&&d.k.includes('Instant')};
+function netTs(){let m=0;for(const p of netPeers())for(const s of (Array.isArray(p.presence.stk)?p.presence.stk:[]))m=Math.max(m,nnum(s&&s.ts));for(const s of (game&&game.stack||[]))m=Math.max(m,s.ts||0);return Math.max(m,net.tsMax||0)}
+function deadIds(){const dead=new Set();for(const p of netOthers())for(const id of (Array.isArray(p.presence.ctr)?p.presence.ctr.slice(0,40):[]))dead.add(String(id));(net.ctr||[]).forEach(i=>dead.add(i));return dead}
+function netStack(){
+  const out=[],me=netMe(),dead=deadIds();
+  for(const p of netOthers())for(const s of (Array.isArray(p.presence.stk)?p.presence.stk.slice(0,20):[])){if(!s||!s.id)continue;
+    out.push({id:nstr(s.id,40),n:nstr(s.n,60),k:nstr(s.k,10),ts:nnum(s.ts),tg:s.tg?nstr(s.tg,40):null,peer:p.peer,owner:pnick(p),mine:false})}
+  for(const s of (game&&game.stack||[]))out.push({id:s.id,n:s.name,k:s.kind,ts:s.ts,tg:s.tg||null,peer:me||'',owner:'Du',mine:true});
+  return out.filter(x=>!dead.has(x.id)).sort((a,b)=>a.ts-b.ts||String(a.peer).localeCompare(String(b.peer)));
+}
+async function stackPut(it){
+  if(it.kind==='spell'&&isCounterCard(it.c)){const opts=netStack();
+    if(opts.length){const ids=await choose(`${it.name}: was neutralisieren?`,[...opts].reverse().map(o=>({id:o.id,label:`${o.n} (${o.owner})`,img:imgOf(o.n)})),{max:1,note:'Keine Auswahl = ohne Ziel wirken.'});it.tg=ids[0]||null}}
+  net.sid=(net.sid||0)+1;it.id=String(netMe()||'me').slice(0,6)+'-'+net.sid+'-'+(Date.now()%100000);it.ts=netTs()+1;net.tsMax=it.ts;
+  game.stack.push(it);logm(`▲ Auf den Stapel: ${it.name}${it.tg?' (Konter)':''}`);
+  await settle();stackTick();
+}
+async function stackTick(){
+  if(!game||!game.stack||net.stBusy)return;
+  const others=netOthers(),dead=deadIds();
+  for(const it of [...game.stack])if(dead.has(it.id)){game.stack.splice(game.stack.indexOf(it),1);logm(`✖ ${it.name} wurde neutralisiert`);
+    if(it.kind==='spell'){const c=it.c;if(c.commander){game.cmd.push(c);logm(`${c.name} → Kommandozone`)}else game.gy.push(c)}}
+  const st=netStack(),top=st[st.length-1];
+  if(!top){return}
+  if(!top.mine){if(net.autoPass)net.pass=top.id;return}
+  const ready=!others.length||net.force===top.id||others.every(p=>p.presence.pass==='*'||p.presence.pass===top.id);
+  if(!ready)return;
+  const it=game.stack.find(x=>x.id===top.id);if(!it)return;
+  net.stBusy=true;
+  try{game.stack.splice(game.stack.indexOf(it),1);logm(`▼ Wird verrechnet: ${it.name}`);
+    if(it.tg)net.ctr=[...(net.ctr||[]),it.tg].slice(-30);
+    pushState();
+    if(it.kind==='spell')await castResolve(it.c,it);else{await runActions(it.acts,{src:it.c,ctx:{}});await resolveQueue()}
+  }catch(e){logm('⚠ Fehler beim Verrechnen: '+(e.message||e))}finally{net.stBusy=false}
+  renderGame();setTimeout(()=>{stackTick().then(()=>renderGame())},0);
+}
+function renderStack(){
+  let el=$('#stackBar');if(!el){el=document.createElement('div');el.id='stackBar';document.body.appendChild(el)}
+  const st=(game&&(table||game.stack.length))?netStack():[];
+  if(!st.length||currentView()!=='testen'){el.style.display='none';document.body.style.paddingBottom='';return}
+  const top=st[st.length-1],others=netOthers();
+  const waiting=top.mine?others.filter(p=>!(p.presence.pass==='*'||p.presence.pass===top.id)).map(pnick):[];
+  const passed=!top.mine&&(net.autoPass||net.pass===top.id);
+  el.style.display='';
+  el.innerHTML=`<div class="sth"><b>Stapel (${st.length})</b><label class="small"><input type="checkbox" id="autoPass" ${net.autoPass?'checked':''} style="vertical-align:-2px"> Immer Okay</label></div>
+   <div class="sti">${[...st].reverse().map((s,i)=>{const im=deck?imgOf(s.n.split(':')[0]):'';const tg=s.tg&&st.find(x=>x.id===s.tg);
+     return `<div class="sit ${i===0?'top':''}">${im?`<img src="${im}" alt="">`:''}<div><b>${esc(s.n)}</b><div class="small">${esc(s.owner)} · ${s.k==='spell'?'Zauber':'Fähigkeit'}${tg?` · ✖ zielt auf ${esc(tg.n)}`:''}</div></div></div>`}).join('')}</div>
+   <div class="row" style="margin-top:6px">${top.mine?`<span class="small" style="flex:1">${waiting.length?'Wartet auf: '+esc(waiting.join(', ')):'Wird verrechnet…'}</span><button class="btn sm" data-stk="force">Trotzdem verrechnen</button>`:
+     (passed?`<span class="small" style="flex:1">Okay gegeben – wartet auf die anderen.</span>`:`<button class="btn pri" data-stk="ok">Okay – keine Antwort</button><span class="small mute" style="flex:1">Antworten: jetzt Spontanzauber wirken oder Fähigkeit aktivieren.</span>`)}</div>`;
+  document.body.style.paddingBottom=(el.offsetHeight+8)+'px';
+}
+
 /* ---------- Import & glue ---------- */
 function importDeck(txt){
   const st=$('#importStatus');
@@ -1785,7 +1857,7 @@ function renderAll(){
 const VIEWS=['deck','analyse','testen','chancen'];
 function currentView(){const h=location.hash.slice(1);return VIEWS.includes(h)?h:'deck'}
 function showView(){const v=currentView();document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));renderAll();window.scrollTo(0,0)}
-window.addEventListener('hashchange',showView);
+window.addEventListener('hashchange',showView);window.addEventListener('hashchange',()=>{if(game)renderStack()});
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)location.hash=b.dataset.v});
 
 const EXAMPLE=`Deck
@@ -1838,6 +1910,7 @@ document.addEventListener('click',async e=>{
   const fr=t.closest('[data-fxreset]');if(fr){delete FXL[fr.dataset.fxreset];autoBuildRules();lsSet('mtg_fx_v1',FXL);rulesSheet(fr.dataset.fxreset);return}
   const r1=t.closest('[data-reload1]');if(r1){closeSheet();location.hash='deck';loadCardData(true,[r1.dataset.reload1]);return}
   const cdx=t.closest('[data-card]');if(cdx&&!t.closest('#sheet')){sheet(cardDetailHTML(cdx.dataset.card));return}
+  const sk=t.closest('[data-stk]');if(sk&&game){const st=netStack(),top=st[st.length-1];if(top){if(sk.dataset.stk==='ok'){net.pass=top.id;renderGame()}else{net.force=top.id;stackTick()}}return}
   const nb=t.closest('[data-net]');if(nb){const k=nb.dataset.net;if(k==='join')netJoin();else if(k==='leave')netLeave();else if(k==='start')netStart();else if(k==='take')netSetTok(netMe());return}
   if(!game)return;
   const lf=t.closest('[data-life]');if(lf){game.life+=+lf.dataset.life;renderGame();return}
@@ -1873,6 +1946,9 @@ document.addEventListener('click',async e=>{
 document.addEventListener('dblclick',e=>{const c=e.target.closest('.mc[data-zone="bf"],.mc[data-zone="lands"]');if(c&&game){const f=findCard(+c.dataset.id);if(f){f.c.tapped=!f.c.tapped;renderGame()}}});
 document.addEventListener('change',e=>{
   if(e.target.id==='autoT'&&game){game.auto=e.target.checked;return}
+  if(e.target.id==='ordT'){ORDERTRIG=e.target.checked;lsSet('mtg_ord',ORDERTRIG);return}
+  if(e.target.id==='stkT'){USESTACK=e.target.checked;lsSet('mtg_stack',USESTACK);return}
+  if(e.target.id==='autoPass'){net.autoPass=e.target.checked;stackTick().then(()=>renderGame());return}
   if(e.target.id==='figT'){FIG=e.target.checked;lsSet('mtg_fig',FIG);if(game)renderGame();return}
   if(e.target.id==='playDraw'&&game){game.onPlay=e.target.value==='1';if(game.phase!=='play'){newGame(game.onPlay)}else renderGame()}
   if(e.target.id==='nOpp'&&game){const n=+e.target.value;game.nOpp=n;const L=fmt()==='commander'?40:20;while(game.opps.length<n)game.opps.push({name:'Gegner '+(game.opps.length+1),life:L});game.opps.length=n;if(game.focus>=n)game.focus=0;renderGame()}
