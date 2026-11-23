@@ -1,0 +1,1176 @@
+{
+"Doctor Doom, King of Latveria": {
+"trig": [
+{
+"on": "discard_batch",
+"if": {
+"lands_min": 1
+},
+"do": [
+{
+"opp_lose": 2
+}
+]
+},
+{
+"on": "combat_start",
+"do": [
+{
+"connive": "target",
+"f": {
+"type": "Villain"
+},
+"note": "Schurke erhält Bedrohlich"
+}
+]
+}
+]
+},
+"Anger": {
+"static": {
+"haste_from_gy": "Mountain"
+}
+},
+"Arcane Denial": {
+"spell": [
+{
+"manual": "Zauber neutralisiert"
+},
+{
+"schedule_upkeep": [
+{
+"draw": 1
+}
+]
+}
+]
+},
+"Archfiend of Ifnir": {
+"static": {
+"cycling": "{2}"
+},
+"trig": [
+{
+"on": "discard",
+"f": {
+"other": true
+},
+"do": [
+{
+"manual": "-1/-1-Marke auf jede gegnerische Kreatur"
+}
+]
+}
+]
+},
+"Archnemesis": {
+"static": {
+"aura": "opponent"
+},
+"trig": [
+{
+"on": "attack_any",
+"if": {
+"enchanted_opp_attacked": true
+},
+"do": [
+{
+"opp_lose_enchanted": 2
+},
+{
+"draw": 1
+},
+{
+"gain": 2
+}
+]
+}
+]
+},
+"Ashnod's Altar": {
+"act": [
+{
+"l": "Kreatur opfern: +2 Mana",
+"cost": {
+"sac_creature": 1
+},
+"do": [
+{
+"mana": 2
+}
+]
+}
+]
+},
+"Baron Strucker, HYDRA Overlord": {
+"static": {
+"villain_discount": 1
+},
+"trig": [
+{
+"on": "etb_other",
+"f": {
+"type": "Villain"
+},
+"once": true,
+"do": [
+{
+"connive": "ctx"
+}
+]
+}
+]
+},
+"Bedevil": {
+"spell": [
+{
+"manual": "Artefakt/Kreatur/Planeswalker zerstört"
+}
+]
+},
+"Bojuka Bog": {
+"trig": [
+{
+"on": "etb",
+"do": [
+{
+"manual": "Friedhof eines Spielers exiliert"
+}
+]
+}
+]
+},
+"Chameleon, Master of Disguise": {
+"static": {
+"mayhem": "{2}{U}",
+"clone": true
+}
+},
+"Containment Construct": {
+"trig": [
+{
+"on": "discard",
+"do": [
+{
+"manual": "Abgeworfene Karte darf exiliert und diesen Zug gespielt werden"
+}
+]
+}
+]
+},
+"Cool but Rude": {
+"act": [
+{
+"l": "Stufe 2 ({1}{R})",
+"if": {
+"level": 1
+},
+"do": [
+{
+"level": 2
+}
+]
+},
+{
+"l": "Stufe 3 ({1}{R})",
+"if": {
+"level": 2
+},
+"do": [
+{
+"level": 3
+},
+{
+"search": {
+"f": {
+"any": true
+},
+"dest": "hand"
+}
+},
+{
+"discard_random": 1
+}
+]
+}
+],
+"trig": [
+{
+"on": "attack_any",
+"do": [
+{
+"rummage_may": 1
+}
+]
+},
+{
+"on": "discard",
+"if": {
+"level_min": 2
+},
+"do": [
+{
+"opp_dmg": 2
+}
+]
+}
+]
+},
+"Counterspell": {
+"spell": [
+{
+"manual": "Zauber neutralisiert"
+}
+]
+},
+"Curiosity": {
+"static": {
+"aura": "creature"
+},
+"trig": [
+{
+"on": "combat_damage_attached",
+"do": [
+{
+"draw": 1
+}
+]
+}
+]
+},
+"Currency Converter": {
+"act": [
+{
+"l": "{2},T: ziehen, dann abwerfen",
+"cost": {
+"tap": 1
+},
+"do": [
+{
+"loot": [
+1,
+1
+]
+}
+]
+},
+{
+"l": "T: Karte aus Friedhof → Schatz/Rogue",
+"cost": {
+"tap": 1
+},
+"do": [
+{
+"converter": 1
+}
+]
+}
+]
+},
+"Dark Ritual": {
+"spell": [
+{
+"mana": 3
+}
+]
+},
+"Desolate Lighthouse": {
+"act": [
+{
+"l": "{1}{U}{R},T: ziehen, dann abwerfen",
+"cost": {
+"tap": 1
+},
+"do": [
+{
+"loot": [
+1,
+1
+]
+}
+]
+}
+]
+},
+"Destructive Force": {
+"spell": [
+{
+"sac_lands": 5
+},
+{
+"dmg_creatures": 5
+}
+]
+},
+"Doctor Doom": {
+"static": {
+"indestructible_if_artifact_creature": true
+},
+"trig": [
+{
+"on": "etb",
+"do": [
+{
+"token": {
+"name": "Doombot",
+"p": "3/3",
+"k": [
+"Artifact",
+"Creature"
+],
+"types": "Robot Villain",
+"n": 2
+}
+}
+]
+},
+{
+"on": "end_step",
+"do": [
+{
+"draw": 1
+},
+{
+"lose": 1
+}
+]
+}
+]
+},
+"Doctor Octopus, Master Planner": {
+"static": {
+"other_villains_pt": 2,
+"hand_max": 8
+},
+"trig": [
+{
+"on": "end_step",
+"do": [
+{
+"draw_up_to": 8
+}
+]
+}
+]
+},
+"Doom Reigns Supreme": {
+"trig": [
+{
+"on": "etb_other",
+"f": {
+"type": "Villain"
+},
+"any_villain": true,
+"do": [
+{
+"opp_lose": 1
+},
+{
+"gain": 1
+},
+{
+"plan": {
+"max": 5,
+"done": [
+{
+"manual": "5. Plan-Marker: Doom Reigns Supreme geopfert – Gegner exiliert 5 Karten, du darfst 2 Zauber davon gratis wirken"
+}
+]
+}
+}
+]
+}
+]
+},
+"Evolving Wilds": {},
+"Faithless Looting": {
+"static": {
+"flashback": "{2}{R}"
+},
+"spell": [
+{
+"loot": [
+2,
+2
+]
+}
+]
+},
+"Feast of Sanity": {
+"trig": [
+{
+"on": "discard",
+"do": [
+{
+"dmg_target": 1
+},
+{
+"gain": 1
+}
+]
+}
+]
+},
+"Frantic Search": {
+"spell": [
+{
+"loot": [
+2,
+2
+]
+},
+{
+"untap_lands": 3
+}
+]
+},
+"Geier Reach Sanitarium": {
+"act": [
+{
+"l": "{2},T: jeder zieht, dann wirft ab",
+"cost": {
+"tap": 1
+},
+"do": [
+{
+"loot": [
+1,
+1
+]
+}
+]
+}
+]
+},
+"Glorious Purpose": {
+"trig": [
+{
+"on": "connive",
+"do": [
+{
+"counter": {
+"n": 1,
+"to": "ctx"
+}
+},
+{
+"plan": {
+"max": 6,
+"done": [
+{
+"glorious": 4
+}
+]
+}
+}
+]
+}
+]
+},
+"Green Goblin, Nemesis": {
+"trig": [
+{
+"on": "discard",
+"f": {
+"land": false
+},
+"do": [
+{
+"counter": {
+"n": 1,
+"to": "target",
+"f": {
+"type": "Goblin"
+}
+}
+}
+]
+},
+{
+"on": "discard",
+"f": {
+"land": true
+},
+"do": [
+{
+"treasure": 1,
+"tapped": true
+}
+]
+}
+]
+},
+"Green Goblin, Revenant": {
+"trig": [
+{
+"on": "attack",
+"do": [
+{
+"discard": 1
+},
+{
+"draw": "discarded_turn"
+}
+]
+}
+]
+},
+"Iron Monger, Sadistic Tycoon": {
+"trig": [
+{
+"on": "connive",
+"do": [
+{
+"counter": {
+"n": 1,
+"to": "villains"
+}
+}
+]
+}
+]
+},
+"Kang, Temporal Tyrant": {
+"trig": [
+{
+"on": "attack",
+"do": [
+{
+"connive": "self"
+}
+]
+},
+{
+"on": "draw_nth",
+"f": {
+"nth": 2
+},
+"do": [
+{
+"opp_lose": 1
+},
+{
+"gain": 1
+}
+]
+}
+]
+},
+"Kefka, Court Mage": {
+"trig": [
+{
+"on": "etb",
+"do": [
+{
+"kefka_discard": 1
+}
+]
+},
+{
+"on": "attack",
+"do": [
+{
+"kefka_discard": 1
+}
+]
+},
+{
+"on": "opp_loses_life",
+"if": {
+"back": true,
+"my_turn": true
+},
+"do": [
+{
+"draw": "ctx.amount"
+}
+]
+}
+],
+"act": [
+{
+"l": "{8}: Gegner opfern, transformieren",
+"if": {
+"front": true
+},
+"cost": {
+"sorcery": 1
+},
+"do": [
+{
+"manual": "Jeder Gegner opfert eine bleibende Karte"
+},
+{
+"transform": 1
+}
+]
+}
+]
+},
+"Kid Loki": {
+"trig": [
+{
+"on": "draw_nth",
+"f": {
+"nth": 2
+},
+"do": [
+{
+"counter": {
+"n": 1,
+"to": "self"
+}
+}
+]
+}
+]
+},
+"Kindred Dominance": {
+"spell": [
+{
+"destroy_creatures_except_type": "Villain"
+}
+]
+},
+"Leader, Super-Genius": {
+"static": {
+"connive_draw_first": true
+},
+"trig": [
+{
+"on": "combat_start",
+"do": [
+{
+"connive": "target"
+}
+]
+}
+]
+},
+"Lethal Scheme": {
+"spell": [
+{
+"manual": "Kreatur/Planeswalker zerstört"
+},
+{
+"connive": "convoke"
+}
+]
+},
+"Lightning Greaves": {
+"static": {
+"equip": "{0}",
+"grants": "haste"
+}
+},
+"Loki, the Deceiver": {
+"trig": [
+{
+"on": "attack",
+"do": [
+{
+"loki_copy": 1
+}
+]
+},
+{
+"on": "villain_combat_damage",
+"do": [
+{
+"draw": 1
+}
+]
+}
+]
+},
+"M.O.D.O.K.": {
+"static": {
+"lifelink": true
+},
+"act": [
+{
+"l": "3 Leben: M.O.D.O.K. connived",
+"cost": {
+"life": 3,
+"your_turn": 1
+},
+"do": [
+{
+"connive": "self"
+}
+]
+}
+]
+},
+"Magmakin Artillerist": {
+"static": {
+"cycling": "{1}{R}"
+},
+"trig": [
+{
+"on": "discard_batch",
+"do": [
+{
+"opp_dmg": "ctx.count"
+}
+]
+}
+],
+"cycle": [
+{
+"opp_dmg": 1
+}
+]
+},
+"Mask of the Schemer": {
+"static": {
+"equip": "{2}"
+},
+"trig": [
+{
+"on": "combat_damage_attached",
+"do": [
+{
+"connive_x": "ctx.amount"
+}
+]
+}
+]
+},
+"Molecule Man": {
+"trig": [
+{
+"on": "etb",
+"do": [
+{
+"manual": "Nichtland-Handkarten haben Wunder {0} (erste gezogene Karte im Zug gratis wirken)"
+}
+]
+}
+]
+},
+"Monument to Endurance": {
+"trig": [
+{
+"on": "discard",
+"do": [
+{
+"modes": [
+{
+"l": "Gegner verlieren 3",
+"do": [
+{
+"opp_lose": 3
+}
+]
+},
+{
+"l": "Karte ziehen",
+"do": [
+{
+"draw": 1
+}
+]
+},
+{
+"l": "Schatz",
+"do": [
+{
+"treasure": 1
+}
+]
+}
+],
+"unique_turn": true
+}
+]
+}
+]
+},
+"Mysterio's Mirage": {
+"trig": [
+{
+"on": "end_step",
+"if": {
+"discarded_this_turn": true
+},
+"do": [
+{
+"token": {
+"name": "Illusion",
+"p": "3/3",
+"types": "Illusion Villain",
+"n": 1
+}
+}
+]
+}
+]
+},
+"Nightscape Familiar": {},
+"Norman Osborn": {
+"static": {
+"unblockable": true
+},
+"trig": [
+{
+"on": "combat_damage",
+"if": {
+"front": true
+},
+"do": [
+{
+"connive": "self"
+}
+]
+}
+],
+"act": [
+{
+"l": "{1}{U}{B}{R}: transformieren",
+"if": {
+"front": true
+},
+"cost": {
+"sorcery": 1
+},
+"do": [
+{
+"transform": 1
+}
+]
+}
+]
+},
+"Oscorp Industries": {
+"static": {
+"mayhem_land": true
+},
+"trig": [
+{
+"on": "etb",
+"if": {
+"from_gy": true
+},
+"do": [
+{
+"lose": 2
+}
+]
+}
+]
+},
+"Prowler, Clawed Thief": {
+"trig": [
+{
+"on": "etb_other",
+"f": {
+"type": "Villain"
+},
+"do": [
+{
+"connive": "self"
+}
+]
+}
+]
+},
+"Psychosis Crawler": {
+"static": {
+"power_hand": true
+},
+"trig": [
+{
+"on": "draw",
+"do": [
+{
+"opp_lose": 1
+}
+]
+}
+]
+},
+"Reanimate": {
+"spell": [
+{
+"from_gy": {
+"f": {
+"type": "Creature"
+},
+"dest": "bf",
+"max": 1,
+"lose_mv": true
+}
+}
+]
+},
+"Relic of Sauron": {
+"act": [
+{
+"l": "{3},T: ziehe 2, wirf 1 ab",
+"cost": {
+"tap": 1
+},
+"do": [
+{
+"loot": [
+2,
+1
+]
+}
+]
+}
+]
+},
+"Return the Favor": {
+"spell": [
+{
+"manual": "Zauber/Fähigkeit kopiert oder umgeleitet"
+}
+]
+},
+"Ringsight": {
+"spell": [
+{
+"search": {
+"f": {
+"shares_color_legend": true
+},
+"dest": "hand"
+}
+}
+]
+},
+"Rogue's Passage": {
+"act": [
+{
+"l": "{4},T: Kreatur unblockbar",
+"cost": {
+"tap": 1
+},
+"do": [
+{
+"manual": "Kreatur ist diesen Zug unblockbar"
+}
+]
+}
+]
+},
+"Scavenger Grounds": {
+"act": [
+{
+"l": "{2},T, Wüste opfern: alle Friedhöfe exilieren",
+"cost": {
+"tap": 1,
+"sac": 1
+},
+"do": [
+{
+"exile_my_gy": 1
+}
+]
+}
+]
+},
+"Teferi's Ageless Insight": {
+"static": {
+"teferi": true
+}
+},
+"Thrill of Possibility": {
+"spell": [
+{
+"discard": 1
+},
+{
+"draw": 2
+}
+]
+},
+"Tombstone, Career Criminal": {
+"static": {
+"villain_discount": 1
+},
+"trig": [
+{
+"on": "etb",
+"do": [
+{
+"from_gy": {
+"f": {
+"type": "Villain"
+},
+"dest": "hand",
+"max": 1
+}
+}
+]
+}
+]
+},
+"Typhoid Mary, Fractured": {
+"trig": [
+{
+"on": "attack",
+"do": [
+{
+"modes": [
+{
+"l": "Mary: Schatz",
+"do": [
+{
+"treasure": 1
+}
+]
+},
+{
+"l": "Typhoid Mary: Karte ziehen",
+"do": [
+{
+"draw": 1
+}
+]
+},
+{
+"l": "Bloody Mary: Gegner verlieren 2, du erhältst 2",
+"do": [
+{
+"opp_lose": 2
+},
+{
+"gain": 2
+}
+]
+}
+],
+"random_unless_discarded": true
+}
+]
+}
+]
+},
+"Ultimate Green Goblin": {
+"static": {
+"mayhem": "{2}{B/R}"
+},
+"trig": [
+{
+"on": "upkeep",
+"do": [
+{
+"discard": 1
+},
+{
+"treasure": 1
+}
+]
+}
+]
+},
+"Ultron, Unlimited": {
+"trig": [
+{
+"on": "attack",
+"do": [
+{
+"connive": "self"
+}
+]
+},
+{
+"on": "connive",
+"do": [
+{
+"token": {
+"name": "Robot",
+"p": "2/2",
+"k": [
+"Artifact",
+"Creature"
+],
+"types": "Robot Villain",
+"n": 1
+},
+"note": "{1} bezahlt"
+}
+]
+}
+]
+},
+"Vandalblast": {
+"spell": [
+{
+"manual": "Artefakt(e) der Gegner zerstört"
+}
+]
+},
+"Villainous Hideout": {
+"act": [
+{
+"l": "{3},T: Schurke connived",
+"cost": {
+"tap": 1,
+"sorcery": 1
+},
+"do": [
+{
+"connive": "target",
+"f": {
+"type": "Villain"
+}
+}
+]
+}
+]
+},
+"Whip of Erebos": {
+"static": {
+"lifelink_all": true
+},
+"act": [
+{
+"l": "{2}{B}{B},T: Kreatur aus Friedhof (Eile)",
+"cost": {
+"tap": 1,
+"sorcery": 1
+},
+"do": [
+{
+"from_gy": {
+"f": {
+"type": "Creature"
+},
+"dest": "bf",
+"max": 1,
+"haste": true,
+"exile_eot": true
+}
+}
+]
+}
+]
+},
+"Wildfire": {
+"spell": [
+{
+"sac_lands": 4
+},
+{
+"dmg_creatures": 4
+}
+]
+},
+"Windfall": {
+"spell": [
+{
+"wheel": 1
+}
+]
+},
+"Wonder": {
+"static": {
+"flying_from_gy": "Island"
+}
+},
+"Doombot": {}
+}

@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTG Decktester</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1115;--panel:#181b22;--panel2:#1f232c;--line:#2b303b;--text:#e8e6e1;--mute:#9a9ca3;--gold:#d8b25a;--gold2:#a8843a;
+  --good:#5fbf7f;--bad:#e06b5b;--warn:#e3b04b;
+  --W:#f4ecd0;--U:#3d84d6;--B:#4a3f46;--R:#de5637;--G:#3e9c5a;--C:#b9b3ab;--N:#c9c6c0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,sans-serif}
+h1,h2,h3{font-family:Cinzel,serif;letter-spacing:.02em;margin:0}
+h2{font-size:18px;margin:0 0 10px}
+h3{font-size:15px;margin:14px 0 8px;color:var(--gold)}
+a{color:var(--gold)}
+header{position:sticky;top:0;z-index:20;background:rgba(15,17,21,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:10px;padding:10px 14px 6px;max-width:1100px;margin:auto}
+.top h1{font-size:19px;color:var(--gold)}
+.top .deckname{color:var(--mute);font-size:13px;margin-left:auto;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
+nav{display:flex;gap:4px;padding:0 10px 8px;max-width:1100px;margin:auto;overflow-x:auto}
+nav button{flex:1;min-width:76px;background:none;border:1px solid var(--line);color:var(--mute);padding:8px 6px;border-radius:9px;font:600 13px Inter;cursor:pointer}
+nav button.on{background:var(--gold);color:#1a1408;border-color:var(--gold)}
+main{max-width:1100px;margin:auto;padding:14px}
+.view{display:none}.view.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+textarea{width:100%;min-height:190px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:13px/1.4 ui-monospace,Menlo,monospace;resize:vertical}
+select,input[type=number]{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font:14px Inter}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 13px;font:600 14px Inter;cursor:pointer;white-space:nowrap}
+.btn:active{transform:scale(.98)}
+.btn.pri{background:var(--gold);color:#1a1408;border-color:var(--gold)}
+.btn.ai{background:linear-gradient(135deg,#6a4fc9,#3f63c9);border-color:#5a5fd0;color:#fff}
+.btn.sm{padding:6px 10px;font-size:13px;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mute{color:var(--mute)}.small{font-size:12.5px}
+.grid2{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:820px){.grid2{grid-template-columns:1fr 1fr}}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px}
+.kpi{background:var(--panel2);border-radius:10px;padding:9px 10px}
+.kpi b{display:block;font-size:20px;font-family:Cinzel,serif;color:var(--gold)}
+.kpi span{font-size:12px;color:var(--mute)}
+.pip{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;font:700 10px Inter;font-style:normal;color:#111;background:var(--N);margin-right:1px;vertical-align:-3px;box-shadow:inset 0 -1px 0 rgba(0,0,0,.25)}
+.pip.W{background:var(--W)}.pip.U{background:var(--U);color:#fff}.pip.B{background:var(--B);color:#fff}.pip.R{background:var(--R);color:#fff}.pip.G{background:var(--G);color:#fff}.pip.C{background:var(--C)}
+.group{margin-bottom:12px}
+.group h3{display:flex;justify-content:space-between}
+.cl{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;cursor:pointer;border-bottom:1px solid #22262f}
+.cl:hover{background:var(--panel2)}
+.cl .q{color:var(--mute);width:22px;text-align:right;font-variant-numeric:tabular-nums}
+.cl .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:10.5px;padding:2px 6px;border-radius:20px;background:#2a2f3a;color:var(--mute);white-space:nowrap}
+.tag.good{background:rgba(95,191,127,.18);color:var(--good)}.tag.bad{background:rgba(224,107,91,.18);color:var(--bad)}
+.tag.gold{background:rgba(216,178,90,.18);color:var(--gold)}
+.bars .b{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}
+.bars .b .l{width:92px;color:var(--mute);flex-shrink:0}
+.bars .b .t{flex:1;height:14px;background:var(--panel2);border-radius:7px;overflow:hidden;position:relative}
+.bars .b .f{height:100%;background:var(--gold);border-radius:7px}
+.bars .b .v{width:58px;text-align:right;font-variant-numeric:tabular-nums}
+.curve{display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:16px}
+.curve .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+.curve .stk{width:100%;display:flex;flex-direction:column-reverse;border-radius:6px 6px 0 0;overflow:hidden}
+.curve .cr{background:var(--gold)}.curve .ot{background:#6c7aa8}
+.curve .num{font-size:12px;margin-bottom:3px}
+.curve .lab{font-size:12px;color:var(--mute);margin-top:4px}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--mute);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.status{font-size:13px;color:var(--mute);margin-top:8px;min-height:18px}
+.status.err{color:var(--bad)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid #fff4;border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* analysis */
+.rating{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.list{margin:0;padding-left:18px}.list li{margin:4px 0}
+.item{background:var(--panel2);border-radius:10px;padding:10px 12px;margin:8px 0}
+.item b.cn{color:var(--gold);cursor:pointer}
+.combo{border-left:3px solid var(--gold)}
+.combo.sug{border-left-color:#6c7aa8}
+/* game */
+.gbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.life{display:flex;align-items:center;gap:6px;background:var(--panel2);border-radius:10px;padding:4px 6px}
+.life b{font:700 20px Cinzel,serif;min-width:34px;text-align:center}
+.life button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:17px;cursor:pointer}
+.chip{background:var(--panel2);border-radius:10px;padding:7px 10px;font-size:13px;color:var(--mute)}
+.chip b{color:var(--text)}
+.zone{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:10px}
+.zone .zh{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.cards{display:flex;flex-wrap:wrap;gap:7px;min-height:30px}
+.hand .cards{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
+.mc{width:104px;min-height:132px;flex-shrink:0;border-radius:9px;padding:6px 7px;background:linear-gradient(160deg,#2a2e38,#1c1f27);border:1.5px solid #3a404d;cursor:pointer;display:flex;flex-direction:column;gap:4px;position:relative;transition:transform .15s}
+.mc .nm{font-weight:600;font-size:12px;line-height:1.2}
+.mc .cs{min-height:17px}
+.mc .tl{font-size:10.5px;color:var(--mute);line-height:1.2}
+.mc .tx{font-size:10px;color:#b9b9b9;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
+.mc .pt{position:absolute;right:6px;bottom:5px;font:700 11px Inter;background:#0008;padding:1px 5px;border-radius:5px}
+.mc.tapped{transform:rotate(9deg);opacity:.55}
+.mc.land{min-height:64px;width:92px}
+.mc.cW{border-color:#d9cfa8}.mc.cU{border-color:#3d84d6}.mc.cB{border-color:#7d6b77}.mc.cR{border-color:#de5637}.mc.cG{border-color:#3e9c5a}.mc.cM{border-color:var(--gold)}
+.mc.sel{outline:2px solid var(--gold)}
+.mc.im{padding:0;border:none;background:none;width:104px;min-height:0;aspect-ratio:488/680;overflow:hidden;border-radius:6px}
+.mc.im img{width:100%;height:100%;object-fit:cover;display:block;border-radius:6px}
+.mc.im.land{width:80px;min-height:0}
+.hand .mc.im{width:118px}
+.cl .th{width:30px;height:42px;object-fit:cover;border-radius:3px;flex-shrink:0}
+img.big{width:100%;max-width:300px;display:block;margin:0 auto 12px;border-radius:14px}
+.opps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.opp{flex:1;min-width:92px;background:var(--panel2);border:1.5px solid var(--line);border-radius:12px;padding:7px 6px;text-align:center;cursor:pointer}
+.opp.focus{border-color:var(--bad)}
+.opp b{font:700 26px Cinzel,serif;display:block;line-height:1.1}
+.opp.dead{opacity:.35}
+.ob{width:28px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer}
+.chgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px;margin-top:10px;max-height:55vh;overflow:auto}
+.chi{border:2px solid transparent;border-radius:9px;padding:3px;cursor:pointer;text-align:center;font-size:11px;background:var(--panel2)}
+.chi img{width:100%;border-radius:6px;display:block;margin-bottom:2px}
+.chi.on{border-color:var(--gold);background:rgba(216,178,90,.18)}
+.mc .bd{position:absolute;left:4px;bottom:4px;background:#000c;color:#fff;font:700 10px Inter;padding:1px 5px;border-radius:5px}
+.mc.im{position:relative}
+.mc.token{background:linear-gradient(160deg,#33402f,#1e261c)}
+.mini{display:flex;flex-wrap:wrap;gap:5px}
+.mini span{font-size:12px;background:var(--panel2);padding:4px 7px;border-radius:7px;cursor:pointer}
+.banner{background:rgba(216,178,90,.14);border:1px solid var(--gold2);color:var(--gold);padding:9px 12px;border-radius:10px;margin-bottom:10px;font-size:14px}
+.tip{background:linear-gradient(135deg,rgba(106,79,201,.16),rgba(63,99,201,.12));border:1px solid #4b4fa8;border-radius:12px;padding:12px;margin-bottom:10px;font-size:14px;white-space:pre-wrap}
+.log{font-size:12px;color:var(--mute);max-height:130px;overflow:auto}
+/* sheet */
+.ov{position:fixed;inset:0;background:#0009;z-index:50;display:none;align-items:flex-end;justify-content:center}
+.ov.on{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:560px;max-height:85vh;overflow:auto;padding:16px 16px 22px}
+@media(min-width:700px){.ov{align-items:center}.sheet{border-radius:18px}}
+.sheet .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.sheet .x{float:right;background:none;border:none;color:var(--mute);font-size:22px;cursor:pointer}
+.libl{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #22262f;font-size:13px}
+.libl .n{flex:1}
+.hands{display:grid;gap:8px}
+.hrow{background:var(--panel2);border-radius:10px;padding:8px 10px;font-size:13px}
+.hrow b{color:var(--gold)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:6px 4px;border-bottom:1px solid #262a33;text-align:left}
+th{color:var(--mute);font-weight:500}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+.ok{color:var(--good)}.lo{color:var(--bad)}.mid{color:var(--warn)}
+.btn.ai,#aiCoach{display:none!important}
+#stage{position:fixed;inset:0;z-index:70;background:rgba(6,7,10,.9);display:flex;flex-direction:column;justify-content:space-between;padding:26px 14px 18px;gap:14px}
+#stage.in{flex-direction:column-reverse}
+#stage .tgt{position:relative;align-self:center;min-width:210px;text-align:center;background:var(--panel2);border:2px solid var(--bad);border-radius:16px;padding:12px 22px}
+#stage .tn{font:700 18px Cinzel,serif;color:var(--gold)}
+#stage .tl b{font:700 46px Cinzel,serif;line-height:1.1}
+#stage .atk{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:flex-end}
+#stage.in .atk{align-items:flex-start}
+#stage .ac{position:relative;width:86px;border-radius:7px}
+#stage .ac img{width:100%;border-radius:6px;display:block;box-shadow:0 6px 18px #000a}
+#stage .ac .at{height:118px;border:1.5px solid var(--gold2);border-radius:7px;background:var(--panel);padding:6px;font-size:11px;font-weight:600}
+#stage .ac>span{position:absolute;right:-4px;bottom:-6px;background:var(--bad);color:#fff;font:700 13px Inter;border-radius:10px;padding:2px 7px}
+#stage .dfl{position:absolute;top:78%;font:700 26px Cinzel,serif;color:var(--bad);pointer-events:none;text-shadow:0 2px 6px #000}
+#pings{position:fixed;right:8px;top:112px;z-index:45;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.ping{display:flex;gap:8px;align-items:center;background:rgba(24,27,34,.96);border:1px solid var(--bad);border-radius:10px;padding:5px 10px 5px 5px;font-size:13px;box-shadow:0 4px 14px #0009}
+.ping img{width:30px;height:42px;object-fit:cover;border-radius:3px}
+.ping b{color:var(--bad);font-size:16px}.ping .small{color:var(--mute);font-size:11px}
+.live{position:relative;overflow:hidden}
+.live .art{position:absolute;left:7.6%;top:11.2%;width:84.8%;height:44.3%;overflow:hidden;border-radius:2px;pointer-events:none}
+.live .art img{position:absolute!important;left:-8.96%;top:0;width:117.92%!important;height:auto!important;max-width:none;margin:-18.4% 0 0 0!important;border-radius:0!important;box-shadow:none!important;object-fit:fill!important;transform-origin:50% 38%;animation:breathe 7s ease-in-out infinite alternate;animation-delay:var(--d,0s);will-change:transform}
+.live::after{content:'';position:absolute;inset:0;background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.2) 50%,transparent 58%);background-size:260% 100%;animation:sheen 6.5s linear infinite;animation-delay:var(--d2,0s);pointer-events:none;mix-blend-mode:screen;border-radius:inherit}
+@keyframes breathe{0%{transform:scale(1) translate(0,0)}35%{transform:scale(1.05) translate(-1.2%,-1.4%)}70%{transform:scale(1.09) translate(1%,-.4%)}100%{transform:scale(1.13) translate(.2%,1%)}}
+@keyframes sheen{0%,55%{background-position:130% 0}100%{background-position:-70% 0}}
+.mc.tapped .art img,.mc.tapped.live::after{animation-play-state:paused}
+.mc.trig{animation:trig .9s ease-out}
+@keyframes trig{0%{box-shadow:0 0 0 0 rgba(216,178,90,.95);filter:brightness(1.6)}100%{box-shadow:0 0 0 14px rgba(216,178,90,0);filter:brightness(1)}}
+.bigwrap{width:100%;max-width:300px;margin:0 auto 12px;border-radius:14px}
+.bigwrap img.big{margin:0;max-width:none}
+.bigwrap .art img{animation-duration:5s}
+#stage .ac.live.go .art img{animation:roar .42s ease-in-out}
+@keyframes roar{0%{transform:scale(1.02)}45%{transform:scale(1.35) translate(0,-3%)}100%{transform:scale(1.05)}}
+@media (prefers-reduced-motion:reduce){.live .art img,.live::after,.mc.trig{animation:none!important}}
+.cards.figs{padding-top:76px;row-gap:80px}
+.mc.fig3d{overflow:visible!important;perspective:520px}
+.mc.im.fig3d>img{transform:rotateX(30deg);transform-origin:50% 100%;box-shadow:0 12px 20px #000b}
+.fig{position:absolute;left:8%;width:84%;bottom:74%;z-index:3;pointer-events:none;transform-origin:50% 100%;animation:figIdle 3.4s ease-in-out infinite alternate;animation-delay:var(--d,0s);filter:drop-shadow(0 0 7px var(--fc,#d8b25a))}
+.figart{position:relative;aspect-ratio:1.374;overflow:hidden;border-radius:46% 46% 10px 10px/72% 72% 10px 10px;border:2px solid var(--fc,#d8b25a);background:radial-gradient(circle at 50% 30%,var(--fc,#d8b25a),#111 78%)}
+.figart img{position:absolute!important;left:-8.96%;top:0;width:117.92%!important;height:auto!important;max-width:none;margin:-18.4% 0 0 0!important;border-radius:0!important;box-shadow:none!important;object-fit:fill!important;transform-origin:50% 35%;animation:figLook 5s ease-in-out infinite alternate;animation-delay:var(--d,0s)}
+.figart span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 26px Cinzel,serif;color:#111}
+.figart::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);background-size:300% 100%;animation:sheen 4.5s linear infinite;animation-delay:var(--d2,0s);mix-blend-mode:screen}
+.fig .base{display:block;width:74%;height:10px;margin:2px auto 0;border-radius:50%;background:radial-gradient(ellipse,var(--fc,#d8b25a),transparent 70%);animation:basePulse 1.6s ease-in-out infinite alternate}
+.fig::before{content:'';position:absolute;inset:-22% -16% -6%;background:radial-gradient(ellipse at 50% 62%,var(--fc,#d8b25a),transparent 66%);opacity:.38;z-index:-1;animation:aura 2.3s ease-in-out infinite alternate}
+.fig::after{content:'';position:absolute;inset:-60% -6% 10%;background-image:radial-gradient(circle,var(--fc,#d8b25a) 0 1.3px,transparent 1.8px),radial-gradient(circle,#fff 0 1px,transparent 1.5px);background-size:23px 31px,37px 43px;animation:sparks 2.4s linear infinite;-webkit-mask-image:linear-gradient(to top,#000 25%,transparent 95%);mask-image:linear-gradient(to top,#000 25%,transparent 95%);opacity:.75}
+@keyframes sparks{to{background-position:0 -62px,0 -86px}}
+@keyframes figIdle{0%{transform:translateY(0) rotateY(-18deg) rotateZ(-2deg)}100%{transform:translateY(-7px) rotateY(18deg) rotateZ(2deg)}}
+@keyframes figLook{0%{transform:scale(1.02) translate(-1.5%,0)}100%{transform:scale(1.14) translate(1.5%,-2%)}}
+@keyframes basePulse{from{opacity:.45;transform:scaleX(.85)}to{opacity:.95;transform:scaleX(1.1)}}
+@keyframes aura{from{opacity:.22;transform:scale(.92)}to{opacity:.5;transform:scale(1.08)}}
+.fig.born{animation:figBorn 1s cubic-bezier(.2,1.5,.4,1)}
+@keyframes figBorn{0%{transform:translateY(46px) scale(0);filter:brightness(4) drop-shadow(0 0 20px #fff)}55%{transform:translateY(-14px) scale(1.25);filter:brightness(1.8) drop-shadow(0 0 16px var(--fc,#fff))}100%{transform:translateY(0) scale(1)}}
+.mc.trig .fig{animation:figJump .85s ease-out}
+@keyframes figJump{0%{transform:translateY(0) scale(1)}30%{transform:translateY(-26px) scale(1.3) rotateZ(-6deg);filter:brightness(1.9) drop-shadow(0 0 16px var(--fc,#fff))}60%{transform:translateY(0) scale(.94,1.05)}100%{transform:translateY(0) scale(1)}}
+.mc.tapped .fig{animation:none;transform:rotateZ(-17deg) translate(-4px,4px);filter:grayscale(.75) brightness(.6)}
+.mc.tapped .fig::after,.mc.tapped .fig::before{display:none}
+#stage{background:radial-gradient(ellipse at 18% 8%,rgba(96,64,220,.42),transparent 52%),radial-gradient(ellipse at 86% 92%,rgba(230,84,60,.32),transparent 52%),radial-gradient(ellipse at 70% 30%,rgba(40,170,200,.18),transparent 45%),rgba(4,5,12,.95)!important;overflow:hidden}
+#stage::before{content:'';position:absolute;inset:-50%;z-index:-1;background-image:radial-gradient(circle,#fff 0 1px,transparent 1.4px),radial-gradient(circle,#9cc8ff 0 1.2px,transparent 1.7px),radial-gradient(circle,#ffd9a0 0 .9px,transparent 1.3px);background-size:90px 110px,150px 130px,60px 70px;opacity:.55;animation:stars 14s linear infinite}
+@keyframes stars{to{transform:translate(-90px,110px) rotate(4deg)}}
+#stage .atk{padding-top:70px;row-gap:74px}
+#stage .ac{perspective:520px}
+#stage .ac.hasfig>img{transform:rotateX(26deg);transform-origin:50% 100%}
+#stage .ac .fig{bottom:76%}
+.shock{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px;border-radius:50%;border:3px solid var(--fc,#fff);pointer-events:none}
+.slash{position:absolute;left:-20%;top:50%;width:140%;height:4px;background:linear-gradient(90deg,transparent,#fff 40%,var(--fc,#fff) 60%,transparent);pointer-events:none;border-radius:2px}
+.sflash{position:absolute;inset:0;background:var(--fc,#fff);pointer-events:none;mix-blend-mode:screen}
+@media (prefers-reduced-motion:reduce){.fig,.fig *,.fig::before,.fig::after,#stage::before{animation:none!important}}
+.empty{color:var(--mute);text-align:center;padding:26px 10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><h1>⚔ Decktester</h1><div class="deckname" id="deckname">Kein Deck geladen</div></div>
+  <nav id="nav">
+    <button data-v="deck" class="on">Deck</button>
+    <button data-v="analyse">Analyse</button>
+    <button data-v="testen">Testen</button>
+    <button data-v="chancen">Chancen</button>
+  </nav>
+</header>
+<main>
+
+<!-- DECK -->
+<section class="view on" id="v-deck">
+  <div class="card">
+    <h2>Moxfield-Liste importieren</h2>
+    <p class="mute small" style="margin:0 0 10px">Kartendaten und Bilder kommen von Scryfall. In Moxfield: <b>More → Export → Copy Plain Text</b> (oder „MTGA“/„MTGO“) und hier einfügen – oder die .txt/.csv-Datei hochladen.</p>
+    <textarea id="decktext" placeholder="Commander&#10;1 Atraxa, Praetors' Voice (CM2) 10&#10;&#10;Deck&#10;1 Sol Ring (C21) 263&#10;1 Arcane Signet&#10;..."></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn pri" id="btnImport">Importieren</button>
+      <label class="btn"><input type="file" id="file" accept=".txt,.csv,.dek,text/plain" hidden>Datei hochladen</label>
+      <button class="btn sm" id="btnMine">Tannuk-Deck</button><button class="btn sm" id="btnDoom">Doctor-Doom-Deck</button><button class="btn sm" id="btnExample">Beispieldeck</button>
+      <select id="format"><option value="auto">Format: automatisch</option><option value="commander">Commander (100)</option><option value="constructed">60-Karten-Format</option></select>
+    </div>
+    <div class="status" id="importStatus"></div>
+  </div>
+  <div class="card" id="deckCard" style="display:none">
+    <div class="row" style="justify-content:space-between;margin-bottom:6px">
+      <h2 style="margin:0">Deckliste</h2>
+      <div class="row"><button class="btn sm ai" id="btnLearn">✦ Regeln lernen</button><button class="btn sm ai" id="btnData">Kartendaten neu laden</button></div>
+    </div>
+    <div class="status" id="dataStatus"></div><div class="status" id="learnStatus"></div>
+    <div id="decklist"></div>
+  </div>
+</section>
+
+<!-- ANALYSE -->
+<section class="view" id="v-analyse">
+  <div id="noDeck1" class="card empty">Importiere zuerst ein Deck im Tab „Deck“.</div>
+  <div id="anaWrap" style="display:none">
+    <div class="card"><h2>Überblick</h2><div class="kpis" id="kpis"></div></div>
+    <div class="grid2">
+      <div class="card"><h2>Manakurve</h2><div class="curve" id="curve"></div>
+        <div class="legend"><span><i style="background:var(--gold)"></i>Kreaturen</span><span><i style="background:#6c7aa8"></i>Andere Zauber</span></div></div>
+      <div class="card"><h2>Kartentypen</h2><div class="bars" id="types"></div></div>
+      <div class="card"><h2>Rollen im Deck</h2><table id="roles"></table><p class="mute small" style="margin:8px 0 0">Richtwerte für <span id="fmtLabel"></span>. Rollen werden aus dem Kartentext geschätzt.</p></div>
+      <div class="card"><h2>Farben: Bedarf vs. Quellen</h2><div class="bars" id="colors"></div><p class="mute small" style="margin:8px 0 0">Links: Farbsymbole in Manakosten · rechts: Länder/Manaquellen, die die Farbe erzeugen.</p></div>
+    </div>
+    <div class="card" id="aiCoach">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Coach-Analyse</h2>
+        <button class="btn ai" id="btnAnalyse">✦ Deck analysieren</button>
+      </div>
+      <p class="mute small" style="margin:8px 0 0">Claude bewertet starke &amp; schwache Karten, Combos, Spielplan und Mulligan-Regeln.</p>
+      <div class="status" id="anaStatus"></div>
+      <div id="analysis"></div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTEN -->
+<section class="view" id="v-testen">
+  <div id="noDeck2" class="card empty">Importiere zuerst ein Deck im Tab „Deck“.</div>
+  <div id="gameWrap" style="display:none">
+    <div id="netBox"></div>
+    <div id="opps"></div>
+    <div class="gbar" id="gbar"></div>
+    <div id="gbanner"></div>
+    <div class="row" id="gactions" style="margin-bottom:10px"></div>
+    <div id="tipBox"></div>
+    <div id="topBox"></div>
+    <div class="zone hand"><div class="zh"><span>Hand (<span id="hc">0</span>)</span><span id="handHint"></span></div><div class="cards" id="z-hand"></div></div>
+    <div class="zone"><div class="zh"><span>Schlachtfeld – Bleibende Karten</span><span id="manaInfo"></span></div><div class="cards" id="z-bf"></div></div>
+    <div class="zone"><div class="zh"><span>Schlachtfeld – Länder</span></div><div class="cards" id="z-lands"></div></div>
+    <div class="grid2">
+      <div class="zone" id="cmdZone"><div class="zh"><span>Kommandozone</span><span id="taxInfo"></span></div><div class="cards" id="z-cmd"></div></div>
+      <div class="zone"><div class="zh"><span>Friedhof (<span id="gc">0</span>) · Exil (<span id="ec">0</span>)</span></div><div class="mini" id="z-gy"></div><div class="mini" id="z-ex" style="margin-top:6px"></div></div>
+    </div>
+    <div class="zone"><div class="zh"><span>Protokoll</span></div><div class="log" id="log"></div></div>
+  </div>
+</section>
+
+<!-- CHANCEN -->
+<section class="view" id="v-chancen">
+  <div id="noDeck3" class="card empty">Importiere zuerst ein Deck im Tab „Deck“.</div>
+  <div id="chWrap" style="display:none">
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Starthand-Simulation</h2><button class="btn sm" id="btnSim">Neu simulieren</button></div>
+      <p class="mute small" style="margin:6px 0 10px">20.000 zufällige Starthände und Züge, ohne Mulligan.</p>
+      <div class="kpis" id="simKpis"></div>
+      <h3>Landdrop jeden Zug geschafft</h3>
+      <table id="simTable"></table>
+    </div>
+    <div class="card">
+      <h2>Ziehe ich Karte X bis Zug Y?</h2>
+      <div class="row">
+        <select id="hgCard" style="flex:1;min-width:180px"></select>
+        <label class="small mute">bis Zug <input type="number" id="hgTurn" value="3" min="0" max="20" style="width:62px"></label>
+        <select id="hgPlay"><option value="play">am Zug (Play)</option><option value="draw">nicht am Zug (Draw)</option></select>
+      </div>
+      <div id="hgOut" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Beispiel-Starthände</h2><button class="btn sm" id="btnHands">5 Hände ziehen</button></div>
+      <div class="hands" id="hands" style="margin-top:10px"></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="ov" id="ov"><div class="sheet" id="sheet"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+const STANDALONE=true;
+/* ---------- Basics ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let LS=null;try{LS=window.localStorage;LS.setItem('_t','1');LS.removeItem('_t')}catch(e){LS=null}
+const lsGet=(k,d)=>{try{const v=LS&&LS.getItem(k);return v?JSON.parse(v):d}catch(e){return d}};
+const lsSet=(k,v)=>{try{LS&&LS.setItem(k,JSON.stringify(v))}catch(e){}};
+const COLORS=['W','U','B','R','G'];
+const CNAME={W:'Weiß',U:'Blau',B:'Schwarz',R:'Rot',G:'Grün',C:'Farblos'};
+const BASIC={plains:'W',island:'U',swamp:'B',mountain:'R',forest:'G',wastes:'C'};
+let sample=null;
+let DB=lsGet('mtg_cards_v1',{});
+let BUNDLE={};
+let deck=null;      // {main:[{name,qty}],commander:[],side:[],maybe:[],format}
+let analysis=null;
+let game=null;
+let uid=0;
+
+/* ---------- Claude ---------- */
+(async()=>{try{ if(window.claude&&claude.use){ sample=await claude.use('sample'); } }catch(e){sample=null}
+  refreshAIButtons(); })();
+function refreshAIButtons(){
+  document.querySelectorAll('.btn.ai').forEach(b=>{ b.disabled=!sample; b.title=sample?'':'Claude-Funktion in dieser Ansicht nicht verfügbar'; });
+}
+function extractJSON(t){
+  t=String(t).replace(/```(?:json)?/gi,'');
+  const a=t.search(/[\[{]/); if(a<0) throw new Error('Keine JSON-Antwort');
+  const open=t[a], close=open==='['?']':'}';
+  const b=t.lastIndexOf(close); return JSON.parse(t.slice(a,b+1));
+}
+async function ask(prompt,opts={}){
+  if(!sample) throw new Error('Claude ist in dieser Ansicht nicht verfügbar.');
+  const r=await sample(prompt,opts);
+  return r.text;
+}
+function aiErr(e){
+  if(e&&e.code==='not_granted') return 'Zugriff auf Claude wurde nicht erlaubt.';
+  if(e&&e.code==='rate_limited') return 'Gerade zu viele Anfragen – bitte kurz warten und erneut versuchen.';
+  return (e&&e.message)||'Fehler bei der Anfrage.';
+}
+
+/* ---------- Parsing ---------- */
+function cleanName(n){
+  return n.replace(/\s+\*[A-Z]+\*/g,'').replace(/\s+\^[^^]*\^/g,'').replace(/\s+#\S+/g,'')
+    .replace(/\s+\([A-Za-z0-9]{2,6}\)(\s+[\w★-]+)?\s*$/,'').replace(/\s+\[[^\]]*\]\s*$/,'').trim();
+}
+function splitCSV(line){const out=[];let cur='',q=false;for(let i=0;i<line.length;i++){const c=line[i];if(q){if(c=='"'&&line[i+1]=='"'){cur+='"';i++}else if(c=='"')q=false;else cur+=c}else{if(c=='"')q=true;else if(c==','){out.push(cur);cur=''}else cur+=c}}out.push(cur);return out}
+function parseDeck(txt){
+  const res={main:[],commander:[],side:[],maybe:[]};
+  txt=txt.replace(/\r/g,'').trim();
+  const lines=txt.split('\n');
+  const add=(sec,name,qty)=>{name=cleanName(name);if(!name)return;const f=res[sec].find(x=>x.name.toLowerCase()===name.toLowerCase());if(f)f.qty+=qty;else res[sec].push({name,qty})};
+  if(/count/i.test(lines[0])&&/name/i.test(lines[0])&&lines[0].includes(',')){
+    const h=splitCSV(lines[0]).map(s=>s.trim().toLowerCase());
+    const ci=h.indexOf('count'),ni=h.indexOf('name'),bi=h.findIndex(x=>x==='board'||x==='section');
+    for(const l of lines.slice(1)){if(!l.trim())continue;const c=splitCSV(l);let sec='main';
+      if(bi>=0){const b=(c[bi]||'').toLowerCase();if(b.includes('command'))sec='commander';else if(b.includes('side'))sec='side';else if(b.includes('maybe'))sec='maybe'}
+      add(sec,c[ni]||'',parseInt(c[ci])||1)}
+    return res;
+  }
+  let sec='main';
+  for(let raw of lines){
+    let line=raw.trim(); if(!line) continue;
+    if(line.startsWith('//')) line=line.slice(2).trim();
+    const h=line.toLowerCase().replace(/\s*\(\d+\)\s*$/,'').replace(/[:\s]+$/,'');
+    if(/^(commander|commanders|kommandeur|command zone)$/.test(h)){sec='commander';continue}
+    if(/^(deck|main|mainboard|maindeck|main deck)$/.test(h)){sec='main';continue}
+    if(/^(sideboard|side|companion)$/.test(h)){sec='side';continue}
+    if(/^(maybeboard|maybe|considering|tokens?)$/.test(h)){sec='maybe';continue}
+    if(/^(about|name)\s/.test(h)) continue;
+    if(/^[a-zäöü ]+\(\d+\)$/i.test(line)) continue;
+    const m=line.match(/^(\d+)\s*x?\s+(.+)$/i);
+    if(m) add(sec,m[2],+m[1]); else add(sec,line,1);
+  }
+  const mainTotal=res.main.reduce((a,b)=>a+b.qty,0);
+  const sideTotal=res.side.reduce((a,b)=>a+b.qty,0);
+  if(!res.commander.length&&mainTotal>=97&&mainTotal<=99&&sideTotal>=1&&sideTotal<=2){res.commander=res.side;res.side=[]}
+  return res;
+}
+const total=arr=>arr.reduce((a,b)=>a+b.qty,0);
+
+/* ---------- Card data ---------- */
+function basicOf(name){const m=name.toLowerCase().replace(/^snow-covered\s+/,'');return BASIC[m]}
+function card(name){
+  const k=name.toLowerCase(); if(BUNDLE[k]&&!(DB[k]&&DB[k].manual)) return BUNDLE[k]; if(DB[k]&&!DB[k].u) return DB[k];
+  const b=basicOf(name);
+  if(b) return {n:name,c:'',v:0,t:'Basic Land',k:['Land'],f:[],m:[b],r:[],s:'Grundland.'};
+  return DB[k]||{n:name,c:'',v:0,t:'?',k:[],f:[],m:[],r:[],s:'',u:true,missing:true};
+}
+const isLand=n=>card(n).k.includes('Land');
+function primType(c){
+  if(c.k.includes('Creature'))return 'Kreaturen';
+  if(c.k.includes('Land'))return 'Länder';
+  for(const [t,de] of [['Planeswalker','Planeswalker'],['Battle','Schlachten'],['Instant','Spontanzauber'],['Sorcery','Hexereien'],['Artifact','Artefakte'],['Enchantment','Verzauberungen']]) if(c.k.includes(t))return de;
+  return 'Unbekannt';
+}
+function allNames(){if(!deck)return[];return [...deck.commander,...deck.main,...deck.side].map(x=>x.name)}
+function cardPrompt(b,hard){
+  return `Du bist eine präzise Magic: The Gathering Kartendatenbank (Oracle-Daten).${hard?' Diese Karten sind teils sehr neu (z. B. aus Final Fantasy, Avatar, Marvel, Edge of Eternities, Tarkir: Dragonstorm, Duskmourn, Bloomburrow oder Commander-Produkten). Gib die Daten an, wenn du die Karte kennst.':''} Gib für JEDE der folgenden Karten ein Objekt zurück. Antworte NUR mit einem JSON-Array, ohne Erklärung, ohne Zeilenumbrüche in Strings.
+Felder:
+"n": Name exakt wie in der Eingabe,
+"c": Manakosten im Format {2}{G}{G} (Hybrid {W/U}, Phyrexianisch {G/P}); Länder "",
+"v": Manawert als Zahl,
+"t": englische Typzeile,
+"k": Haupttypen als Array aus Land, Creature, Instant, Sorcery, Artifact, Enchantment, Planeswalker, Battle,
+"f": Farbidentität als Array aus W,U,B,R,G,
+"m": Farben, die die Karte als Mana erzeugen kann (W,U,B,R,G,C), sonst [],
+"r": Rollen als Array aus ramp, draw, removal, wipe, counter, tutor, protection, wincon, combo, recursion, tokens, lifegain, fixing, utility, mdfc, landfall,
+"p": Stärke/Widerstand wie "3/2" oder "" (Planeswalker: Loyalität),
+"s": knappe deutsche Zusammenfassung des Regeltextes (max. 22 Wörter, keine Anführungszeichen).
+Doppelseitige Karten: Daten der Vorderseite; modale Karten mit Land-Rückseite bekommen Rolle "mdfc". Nur wenn du eine Karte wirklich nicht kennst: {"n":"…","u":true}.
+Karten: ${JSON.stringify(b)}`;
+}
+function lenientArray(txt){
+  try{const v=extractJSON(txt);if(Array.isArray(v))return v;if(v&&Array.isArray(v.cards))return v.cards;if(v&&v.n)return [v]}catch(e){}
+  // Fallback: einzelne Objekte retten (z. B. bei abgeschnittener Antwort)
+  const out=[];const t=String(txt);let depth=0,start=-1,inStr=false,esc2=false;
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(inStr){if(esc2)esc2=false;else if(c==='\\')esc2=true;else if(c==='"')inStr=false;continue}
+    if(c==='"'){inStr=true;continue}
+    if(c==='{'){if(depth===0)start=i;depth++}
+    else if(c==='}'){depth--;if(depth===0&&start>=0){try{const o=JSON.parse(t.slice(start,i+1));if(o&&o.n)out.push(o)}catch(e){}start=-1}}}
+  if(!out.length)throw new Error('Antwort nicht lesbar');
+  return out;
+}
+const norm=s=>String(s).toLowerCase().replace(/[^a-z0-9]/g,'');
+function storeCards(arr,names){
+  let got=0;
+  for(const n of names){
+    const o=arr.find(x=>x&&x.n&&x.n.toLowerCase()===n.toLowerCase())||arr.find(x=>x&&x.n&&(norm(x.n)===norm(n)||norm(x.n).startsWith(norm(n.split(' // ')[0]))));
+    if(!o)continue;
+    if(o.u){ if(!DB[n.toLowerCase()]||DB[n.toLowerCase()].u) DB[n.toLowerCase()]={n,u:true,k:[],f:[],m:[],r:[],v:0,c:'',t:'?',s:''}; continue }
+    o.n=n;o.k=Array.isArray(o.k)?o.k:[];o.f=Array.isArray(o.f)?o.f:[];o.m=Array.isArray(o.m)?o.m:[];o.r=Array.isArray(o.r)?o.r:[];o.v=+o.v||0;o.c=o.c||'';o.t=o.t||'';o.s=o.s||'';o.p=o.p||'';
+    DB[n.toLowerCase()]=o;got++;
+  }
+  return got;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function fetchBatch(b,opts,progress){
+  // mit Wiederholung, Backoff und Aufteilen bei Fehlern
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      const txt=await ask(cardPrompt(b,opts.hard),{modelTier:opts.hard?'complex':'default'});
+      const arr=lenientArray(txt);storeCards(arr,b);
+      const missingHere=b.filter(n=>!DB[n.toLowerCase()]);
+      if(missingHere.length&&missingHere.length<b.length&&opts.depth<3){await fetchBatch(missingHere,{...opts,depth:opts.depth+1},()=>{})}
+      progress(b.length);return;
+    }catch(e){
+      if(e&&e.code==='not_granted')throw e;
+      opts.lastErr=aiErr(e);
+      if(e&&e.code==='rate_limited'){await sleep(4000*(attempt+1));continue}
+      if(b.length>1&&opts.depth<3){const m=Math.ceil(b.length/2);
+        await fetchBatch(b.slice(0,m),{...opts,depth:opts.depth+1},()=>{});await fetchBatch(b.slice(m),{...opts,depth:opts.depth+1},()=>{});progress(b.length);return}
+      await sleep(1500);
+    }
+  }
+  progress(b.length);
+}
+async function loadCardData(force,only){
+  if(STANDALONE)return loadCardDataScryfall(force,only);
+  const st=$('#dataStatus');
+  const names=only||[...new Set(allNames())].filter(n=>!basicOf(n)&&!BUNDLE[n.toLowerCase()]&&(force||!DB[n.toLowerCase()]||DB[n.toLowerCase()].u));
+  if(!names.length){st.className='status';st.textContent='Alle Kartendaten vorhanden.';return}
+  if(!sample){st.className='status err';st.textContent='Kartendaten werden über Claude geladen – das ist in dieser Ansicht nicht verfügbar. Öffne den Tester über claude.ai.';return}
+  st.className='status';const btn=$('#btnData');btn.disabled=true;
+  const batches=[];for(let i=0;i<names.length;i+=20)batches.push(names.slice(i,i+20));
+  let done=0;const opts={depth:0,hard:false,lastErr:''};
+  const prog=n=>{done+=n;st.innerHTML=`<span class="spin"></span> Lade Kartendaten… ${Math.min(done,names.length)}/${names.length}`};
+  prog(0);
+  try{
+    const q=[...batches];await Promise.all(Array.from({length:2},async()=>{while(q.length){await fetchBatch(q.shift(),opts,prog)}}));
+    // zweiter Durchgang für Unbekannte: einzeln mit stärkerem Modell
+    let rest=names.filter(n=>!DB[n.toLowerCase()]||DB[n.toLowerCase()].u);
+    if(rest.length){st.innerHTML=`<span class="spin"></span> Zweiter Versuch für ${rest.length} Karte(n)…`;
+      const q2=[];for(let i=0;i<rest.length;i+=5)q2.push(rest.slice(i,i+5));
+      const o2={depth:0,hard:true,lastErr:''};
+      await Promise.all(Array.from({length:2},async()=>{while(q2.length){await fetchBatch(q2.shift(),o2,()=>{})}}));
+      if(o2.lastErr)opts.lastErr=o2.lastErr;
+    }
+    lsSet('mtg_cards_v1',DB);
+    const unknown=[...new Set(allNames())].filter(n=>card(n).u);
+    st.className='status'+(unknown.length?' err':'');
+    st.innerHTML=unknown.length?`Fertig – ${unknown.length} Karte(n) ohne Daten: ${esc(unknown.slice(0,5).join(', '))}${unknown.length>5?' …':''}. Tippe eine Karte an → <b>Daten eintragen</b>, oder „Kartendaten neu laden“.${opts.lastErr?` <span class="small">(Letzter Fehler: ${esc(opts.lastErr)})</span>`:''}`:'Kartendaten geladen ✓';
+  }catch(e){st.className='status err';st.textContent=aiErr(e)}
+  btn.disabled=!sample;
+  renderAll();
+}
+function editSheet(name){
+  const d=card(name);const K=['Land','Creature','Instant','Sorcery','Artifact','Enchantment','Planeswalker','Battle'];
+  const RL=['ramp','draw','removal','wipe','counter','tutor','protection','wincon','combo','recursion','tokens','fixing','landfall','mdfc'];
+  const cb=(grp,v,on,l)=>`<label class="tag ${on?'gold':''}" style="cursor:pointer;padding:5px 9px;font-size:12px"><input type="checkbox" data-g="${grp}" value="${v}" ${on?'checked':''} style="display:none" onchange="this.parentNode.classList.toggle('gold',this.checked)">${l}</label>`;
+  sheet(`<h2 style="padding-right:30px">${esc(name)}</h2><p class="mute small" style="margin:4px 0 10px">Daten von Hand eintragen (z. B. für ganz neue Karten).</p>
+  <div class="row"><label class="small">Manakosten <input id="eC" value="${esc(d.c||'')}" placeholder="{2}{G}" style="width:110px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px"></label>
+  <label class="small">Manawert <input id="eV" type="number" min="0" value="${d.v||0}" style="width:64px"></label>
+  <label class="small">S/W <input id="eP" value="${esc(d.p||'')}" placeholder="2/2" style="width:60px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px"></label></div>
+  <h3>Typ</h3><div class="row" style="gap:5px">${K.map(k=>cb('k',k,d.k.includes(k),k)).join('')}</div>
+  <h3>Erzeugt Mana</h3><div class="row" style="gap:5px">${['W','U','B','R','G','C'].map(k=>cb('m',k,d.m.includes(k),`<i class="pip ${k}">${k}</i>`)).join('')}</div>
+  <h3>Rollen</h3><div class="row" style="gap:5px">${RL.map(k=>cb('r',k,d.r.includes(k),ROLE_DE[k]||k)).join('')}</div>
+  <h3>Kurztext</h3><input id="eS" value="${esc(d.s||'')}" style="width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px">
+  <div class="acts"><button class="btn pri" data-save="${esc(name)}">Speichern</button>${sample?`<button class="btn ai" data-reload1="${esc(name)}">✦ Neu laden</button>`:''}</div>`);
+}
+function saveEdit(name){
+  const g=k=>[...document.querySelectorAll(`#sheet input[data-g="${k}"]:checked`)].map(i=>i.value);
+  const c=$('#eC').value.trim();
+  const f=[...new Set((c.match(/[WUBRG]/gi)||[]).map(x=>x.toUpperCase()))];
+  DB[name.toLowerCase()]={n:name,c,v:+$('#eV').value||0,t:g('k').join(' ')||'?',k:g('k'),f,m:g('m'),r:g('r'),p:$('#eP').value.trim(),s:$('#eS').value.trim(),manual:true};
+  lsSet('mtg_cards_v1',DB);closeSheet();renderAll();
+}
+
+const imgOf=(name,big)=>{const c=card(name);return c.img?sfImg(c.img,big?'normal':'small'):''};
+/* ---------- Eigenständige Version: Scryfall + Supabase ---------- */
+const sfImg=(id,size,face)=>`https://cards.scryfall.io/${size}/${face||'front'}/${id[0]}/${id[1]}/${id}.jpg`;
+function guessRoles(o,land){const r=[];o=o||'';const t=(re,k)=>{if(re.test(o)&&!r.includes(k))r.push(k)};
+  if(!land)t(/\bAdd \{|adds? (one|two|three) mana|additional land|search your library for [^.]*land[^.]*onto the battlefield/i,'ramp');
+  t(/draws? (a|an additional|two|three|four|X|that many) cards?|connive/i,'draw');t(/destroy target|exile target|damage to (any target|target creature)|target creature gets -/i,'removal');
+  t(/destroy all|damage to each creature|all creatures get -|each player sacrifices/i,'wipe');t(/counter target/i,'counter');t(/search your library for an? (?!basic land)(?![^.]*land card)/i,'tutor');
+  t(/hexproof|indestructible|shroud|protection from/i,'protection');t(/from (your|a) graveyard (to|onto)|return target [^.]* card from your graveyard/i,'recursion');
+  t(/create [^.]* token/i,'tokens');t(/Landfall/,'landfall');t(/each opponent loses|damage to each opponent|you win the game/i,'wincon');return r}
+function sfToCard(c,askedName){
+  const f=c.card_faces,front=f?f[0]:c,K=['Land','Creature','Instant','Sorcery','Artifact','Enchantment','Planeswalker','Battle'];
+  const tl=(front.type_line||c.type_line||'').split('—')[0];const o=c.oracle_text||(f?f.map(x=>x.oracle_text||'').join('\n//\n'):'');
+  const e={n:askedName,c:front.mana_cost||c.mana_cost||'',v:c.cmc||0,t:front.type_line||c.type_line||'',k:K.filter(k=>tl.includes(k)),f:c.color_identity||[],m:c.produced_mana||[],
+    r:guessRoles(o,tl.includes('Land')),p:front.power?front.power+'/'+front.toughness:(front.loyalty||''),s:'',o,img:c.id,src:'scryfall'};
+  if(f&&!c.image_uris&&f[1]){const b=f[1];e.back={n:b.name,t:b.type_line||'',p:b.power?b.power+'/'+b.toughness:'',o:b.oracle_text||''};e.imgb=c.id+'-b'}
+  return e;
+}
+async function loadCardDataScryfall(force,only){
+  const st=$('#dataStatus');
+  const names=only||[...new Set(allNames())].filter(n=>!basicOf(n)&&!BUNDLE[n.toLowerCase()]&&(force||!DB[n.toLowerCase()]||DB[n.toLowerCase()].u||!DB[n.toLowerCase()].img));
+  if(!names.length){st.className='status';st.textContent='Alle Kartendaten vorhanden.';return}
+  st.className='status';let done=0,miss=[];
+  try{
+    for(let i=0;i<names.length;i+=70){
+      const part=names.slice(i,i+70);st.innerHTML=`<span class="spin"></span> Lade Kartendaten von Scryfall… ${done}/${names.length}`;
+      const r=await fetch('https://api.scryfall.com/cards/collection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({identifiers:part.map(n=>({name:n.split(' // ')[0]}))})});
+      if(!r.ok)throw new Error('Scryfall antwortet mit '+r.status);
+      const j=await r.json();
+      for(const n of part){const key=norm(n.split(' // ')[0]);const c=(j.data||[]).find(x=>norm(x.name)===norm(n)||norm(x.name.split(' // ')[0])===key||(x.card_faces||[]).some(fc=>norm(fc.name)===key));
+        if(c)DB[n.toLowerCase()]=sfToCard(c,n);else{miss.push(n);if(!DB[n.toLowerCase()])DB[n.toLowerCase()]={n,u:true,k:[],f:[],m:[],r:[],v:0,c:'',t:'?',s:''}}}
+      done+=part.length;await sleep(120);
+    }
+    lsSet('mtg_cards_v1',DB);
+    st.className='status'+(miss.length?' err':'');
+    st.textContent=miss.length?`Fertig – bei Scryfall nicht gefunden: ${miss.slice(0,6).join(', ')}${miss.length>6?' …':''}. Schreibweise prüfen oder Karte antippen → Daten eintragen.`:'Kartendaten von Scryfall geladen ✓';
+  }catch(e){st.className='status err';st.textContent='Scryfall nicht erreichbar: '+(e.message||e)}
+  renderAll();
+}
+function makeSupaRoom(){
+  const cfg=window.MTG_CONFIG||{};
+  if(!cfg.supabaseUrl||!cfg.supabaseKey||!window.supabase||!window.supabase.createClient)return null;
+  let client;try{client=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey,{realtime:{params:{eventsPerSecond:5}}})}catch(e){return null}
+  const myId=Math.random().toString(36).slice(2,12)+Date.now().toString(36).slice(-4);
+  return {join:name=>new Promise((res,rej)=>{
+    const ch=client.channel(name,{config:{presence:{key:myId}}});
+    let mine={},ok=false,done=false,hs=[],snap=Object.freeze([]),timer=null,left=false;
+    const mk=(k,pr)=>Object.freeze({peer:k,by:null,kind:'viewer',guest:false,isMe:k===myId,sameTab:k===myId,presence:pr,updatedAt:Date.now()});
+    const rebuild=()=>{if(left)return;let st={};try{st=ch.presenceState()}catch(e){}
+      const arr=Object.keys(st).filter(k=>k!==myId).map(k=>{const l=st[k]||[];const p={...(l[l.length-1]||{})};delete p.presence_ref;return mk(k,p)});
+      arr.push(mk(myId,mine));snap=Object.freeze(arr);for(const h of hs){try{h({peers:snap,joined:[],left:[],updated:[]})}catch(e){}}};
+    const T={name,presence:async patch=>{mine={...mine,...patch};for(const k in mine)if(mine[k]===null)delete mine[k];
+        if(!timer)timer=setTimeout(()=>{timer=null;if(ok&&!left)ch.track(mine).catch(()=>{})},250);setTimeout(rebuild,0)},
+      peers:()=>snap,onPeers:h=>{hs.push(h);setTimeout(rebuild,0);return()=>{hs=hs.filter(x=>x!==h)}},connected:()=>ok,
+      leave:async()=>{left=true;hs=[];try{await ch.untrack()}catch(e){}try{await client.removeChannel(ch)}catch(e){}}};
+    ch.on('presence',{event:'sync'},rebuild);
+    ch.subscribe(status=>{
+      if(status==='SUBSCRIBED'){ok=true;ch.track(mine).catch(()=>{});if(!done){done=true;res(T)}else rebuild()}
+      else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){ok=false;if(!done){done=true;rej({code:'upstream_error',message:status})}else rebuild()}
+      else if(status==='CLOSED'){ok=false}
+    });
+    setTimeout(()=>{if(!done){done=true;rej({code:'upstream_error',message:'timeout'})}},12000);
+  })};
+}
+/* ---------- Mana pips ---------- */
+function pips(cost){
+  if(!cost)return '';
+  return esc(cost).replace(/\{([^}]+)\}/g,(m,s)=>{
+    const k=s.toUpperCase();
+    if(/^[WUBRGC]$/.test(k))return `<i class="pip ${k}">${k}</i>`;
+    if(k.includes('/')){const p=k.split('/');const cols=p.filter(x=>/^[WUBRG]$/.test(x));
+      if(cols.length===2)return `<i class="pip" style="background:linear-gradient(135deg,var(--${cols[0]}) 50%,var(--${cols[1]}) 50%)"></i>`;
+      if(cols.length===1)return `<i class="pip ${cols[0]}">${p.includes('P')?'φ':cols[0]}</i>`;}
+    return `<i class="pip">${k}</i>`;
+  });
+}
+function costPips(cost){const out={W:0,U:0,B:0,R:0,G:0};(cost||'').replace(/\{([^}]+)\}/g,(m,s)=>{s.toUpperCase().split('/').forEach(x=>{if(out[x]!==undefined)out[x]+= s.includes('/')?0.5:1})});return out}
+
+/* ---------- Deck view ---------- */
+function deckHash(){return allNames().sort().join('|').length+':'+[...deck.main,...deck.commander].map(x=>x.qty+x.name).sort().join('|').split('').reduce((a,c)=>(a*31+c.charCodeAt(0))|0,7)}
+function fmt(){return deck.format}
+function verdict(name){
+  if(!analysis)return '';
+  const ln=name.toLowerCase();
+  if((analysis.starke_karten||[]).some(x=>(x.name||'').toLowerCase()===ln))return '<span class="tag good">stark</span>';
+  if((analysis.schwache_karten||[]).some(x=>(x.name||'').toLowerCase()===ln))return '<span class="tag bad">schwach</span>';
+  return '';
+}
+function renderDeck(){
+  if(!deck){$('#deckCard').style.display='none';return}
+  $('#deckCard').style.display='';
+  const groups={};
+  if(deck.commander.length)groups['Commander']=deck.commander;
+  for(const e of deck.main){const g=primType(card(e.name));(groups[g]=groups[g]||[]).push(e)}
+  const order=['Commander','Kreaturen','Planeswalker','Spontanzauber','Hexereien','Artefakte','Verzauberungen','Schlachten','Länder','Unbekannt'];
+  let h='';
+  for(const g of order){const arr=groups[g];if(!arr)continue;
+    arr.sort((a,b)=>card(a.name).v-card(b.name).v||a.name.localeCompare(b.name));
+    h+=`<div class="group"><h3><span>${g}</span><span class="mute">${total(arr)}</span></h3>`;
+    for(const e of arr){const c=card(e.name);
+      h+=`<div class="cl" data-card="${esc(e.name)}">${imgOf(e.name)?`<img class="th" loading="lazy" src="${imgOf(e.name)}" alt="">`:''}<span class="q">${e.qty}</span><span class="n">${esc(e.name)}</span>${verdict(e.name)}${c.missing?'<span class="tag">?</span>':''}${needsRules(e.name)?'<span class="tag" title="Noch keine automatischen Regeln">ohne Regeln</span>':''}<span>${pips(c.c)}</span></div>`}
+    h+='</div>'}
+  if(deck.side.length){h+=`<div class="group"><h3><span>Sideboard</span><span class="mute">${total(deck.side)}</span></h3>`+deck.side.map(e=>`<div class="cl" data-card="${esc(e.name)}"><span class="q">${e.qty}</span><span class="n">${esc(e.name)}</span><span>${pips(card(e.name).c)}</span></div>`).join('')+'</div>'}
+  $('#decklist').innerHTML=h;
+  const nr=[...new Set(allNames())].filter(needsRules).length;$('#btnLearn').textContent=nr?`✦ Regeln lernen (${nr})`:'✓ Alle Regeln da';$('#btnLearn').disabled=!nr||!sample;
+  const t=total(deck.main)+total(deck.commander);
+  $('#deckname').textContent=(deck.commander[0]?deck.commander.map(x=>x.name).join(' + '):(fmt()==='commander'?'Commander-Deck':'60-Karten-Deck'))+` · ${t} Karten`;
+}
+
+/* ---------- Stats ---------- */
+const TARGETS={commander:{Länder:[35,38],ramp:[10,14],draw:[10,15],removal:[8,12],wipe:[2,4],counter:[0,8],tutor:[0,6],protection:[2,6],wincon:[2,6]},
+  constructed:{Länder:[20,26],ramp:[0,8],draw:[3,10],removal:[4,12],wipe:[0,4],counter:[0,8],tutor:[0,4],protection:[0,4],wincon:[2,8]}};
+const ROLE_DE={fetch:'Fetchländer',landfall:'Landfall',fixing:'Fixing',mdfc:'MDFC',ramp:'Ramp',draw:'Kartenvorteil',removal:'Removal',wipe:'Board Wipes',counter:'Counter',tutor:'Tutoren',protection:'Schutz',wincon:'Siegbedingungen',recursion:'Rekursion',tokens:'Token',combo:'Combo-Teile'};
+function stats(){
+  const cards=[...deck.main];
+  const s={n:total(cards)+total(deck.commander),lands:0,nonland:0,cmcSum:0,curve:{},types:{},roles:{},pips:{W:0,U:0,B:0,R:0,G:0},src:{W:0,U:0,B:0,R:0,G:0},missing:0};
+  for(const e of [...cards,...deck.commander]){const c=card(e.name),q=e.qty;
+    if(c.missing)s.missing+=q;
+    const t=primType(c);s.types[t]=(s.types[t]||0)+q;
+    for(const r of c.r)s.roles[r]=(s.roles[r]||0)+q;
+    if(c.k.includes('Land')){s.lands+=q}else{s.nonland+=q;s.cmcSum+=c.v*q;const b=Math.min(7,Math.round(c.v));
+      const cr=c.k.includes('Creature');s.curve[b]=s.curve[b]||{cr:0,ot:0};s.curve[b][cr?'cr':'ot']+=q;
+      const p=costPips(c.c);for(const k of COLORS)s.pips[k]+=p[k]*q}
+    if(c.k.includes('Land')||c.r.includes('ramp')||c.r.includes('fixing'))for(const m of c.m)if(s.src[m]!==undefined)s.src[m]+=q;
+  }
+  s.avg=s.nonland?s.cmcSum/s.nonland:0;
+  return s;
+}
+function renderAnalyse(){
+  if(!deck)return;
+  const s=stats();const T=TARGETS[fmt()];
+  const ramp=s.roles.ramp||0;
+  $('#kpis').innerHTML=[
+    [s.n,'Karten'],[s.lands,'Länder'],[s.avg.toFixed(2),'Ø Manawert'],[ramp,'Ramp'],[s.roles.draw||0,'Kartenvorteil'],[(s.roles.removal||0)+(s.roles.wipe||0),'Interaktion']
+  ].map(([v,l])=>`<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('')+(s.missing?`<div class="kpi"><b class="lo">${s.missing}</b><span>ohne Kartendaten</span></div>`:'');
+  // curve
+  let max=1;for(let i=0;i<=7;i++){const c=s.curve[i];if(c)max=Math.max(max,c.cr+c.ot)}
+  let ch='';for(let i=0;i<=7;i++){const c=s.curve[i]||{cr:0,ot:0};const tot=c.cr+c.ot;
+    ch+=`<div class="col"><div class="num">${tot||''}</div><div class="stk" style="height:${tot/max*100}%"><div class="cr" style="height:${tot?c.cr/tot*100:0}%"></div><div class="ot" style="height:${tot?c.ot/tot*100:0}%"></div></div><div class="lab">${i===7?'7+':i}</div></div>`}
+  $('#curve').innerHTML=ch;
+  // types
+  const tm=Math.max(1,...Object.values(s.types));
+  $('#types').innerHTML=Object.entries(s.types).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="b"><span class="l">${k}</span><span class="t"><span class="f" style="display:block;width:${v/tm*100}%"></span></span><span class="v">${v}</span></div>`).join('');
+  // roles
+  $('#fmtLabel').textContent=fmt()==='commander'?'Commander':'60-Karten-Decks';
+  const rows=[['Länder',s.lands],...['ramp','draw','removal','wipe','counter','tutor','protection','wincon'].map(r=>[r,s.roles[r]||0])];
+  $('#roles').innerHTML='<tr><th>Rolle</th><th class="r">Anzahl</th><th class="r">Richtwert</th></tr>'+rows.map(([r,v])=>{const t=T[r]||[0,99];const cls=v<t[0]?'lo':v>t[1]?'mid':'ok';
+    return `<tr><td>${ROLE_DE[r]||r}</td><td class="r ${cls}"><b>${v}</b></td><td class="r mute">${t[1]>=99?'–':t[0]+'–'+t[1]}</td></tr>`}).join('');
+  // colors
+  const used=COLORS.filter(c=>s.pips[c]>0||s.src[c]>0);
+  const pm=Math.max(1,...used.map(c=>s.pips[c])),sm=Math.max(1,...used.map(c=>s.src[c]));
+  $('#colors').innerHTML=used.length?used.map(c=>{const sharePip=s.pips[c]/Math.max(1,COLORS.reduce((a,k)=>a+s.pips[k],0));const shareSrc=s.src[c]/Math.max(1,s.lands);
+    const warn=sharePip>0.15&&s.src[c]<(fmt()==='commander'?12:8);
+    return `<div class="b"><span class="l"><i class="pip ${c}">${c}</i> ${CNAME[c]}</span><span class="t"><span class="f" style="display:block;width:${s.pips[c]/pm*100}%;background:var(--${c})"></span></span><span class="v">${Math.round(s.pips[c])} / <b class="${warn?'lo':''}">${s.src[c]}</b></span></div>`}).join(''):'<p class="mute small">Keine Farbdaten – Kartendaten laden.</p>';
+  renderAnalysis();
+}
+function renderAnalysis(){
+  const el=$('#analysis');
+  if(!analysis){el.innerHTML='';return}
+  const a=analysis;const R=a.bewertung||{};
+  const cn=n=>`<b class="cn" data-card="${esc(n)}">${esc(n)}</b>`;
+  let h=`<h3>${esc(a.archetyp||'Deck')}</h3><p style="margin:0 0 10px">${esc(a.kurz||'')}</p>`;
+  h+='<div class="rating">'+[['tempo','Tempo'],['konstanz','Konstanz'],['interaktion','Interaktion'],['power','Power-Level']].map(([k,l])=>{const v=+R[k]||0;return `<div class="kpi"><span>${l}</span><div class="bars"><div class="b" style="margin:4px 0 0"><span class="t"><span class="f" style="display:block;width:${v*10}%"></span></span><span class="v" style="width:34px"><b>${v}</b>/10</span></div></div></div>`}).join('')+'</div>';
+  const sp=a.spielplan||{};
+  h+=`<h3>Spielplan – worauf du spielst</h3><div class="item"><b>Früh:</b> ${esc(sp.frueh||'')}</div><div class="item"><b>Mitte:</b> ${esc(sp.mitte||'')}</div><div class="item"><b>Spät:</b> ${esc(sp.spaet||'')}</div>`;
+  if((sp.siegbedingungen||[]).length)h+=`<div class="item"><b>Siegbedingungen:</b><ul class="list">${sp.siegbedingungen.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+  if((a.combos||[]).length){h+='<h3>Combos &amp; Synergien</h3>';for(const c of a.combos){h+=`<div class="item combo ${c.im_deck===false?'sug':''}"><div class="row" style="gap:6px;margin-bottom:4px">${(c.karten||[]).map(cn).join(' <span class="mute">+</span> ')} ${c.im_deck===false?'<span class="tag">Vorschlag – fehlt im Deck</span>':c.unendlich?'<span class="tag gold">Infinite</span>':''}</div><div class="small">${esc(c.ablauf||'')}</div>${c.ergebnis?`<div class="small" style="margin-top:4px"><b>Ergebnis:</b> ${esc(c.ergebnis)}</div>`:''}</div>`}}
+  if((a.starke_karten||[]).length){h+='<h3>Stärkste Karten</h3>'+a.starke_karten.map(x=>`<div class="item">${cn(x.name)} <span class="tag good">stark</span><div class="small" style="margin-top:3px">${esc(x.warum)}</div></div>`).join('')}
+  if((a.schwache_karten||[]).length){h+='<h3>Schwächste Karten &amp; Ersatz</h3>'+a.schwache_karten.map(x=>`<div class="item">${cn(x.name)} <span class="tag bad">schwach</span><div class="small" style="margin-top:3px">${esc(x.warum)}</div>${x.ersatz?`<div class="small" style="margin-top:4px">→ <b>Besser:</b> ${esc(x.ersatz)}</div>`:''}</div>`).join('')}
+  if((a.mulligan||[]).length)h+=`<h3>Mulligan-Regeln</h3><ul class="list">${a.mulligan.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+  if((a.schwaechen||[]).length)h+=`<h3>Schwachstellen</h3><ul class="list">${a.schwaechen.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+  if((a.tipps||[]).length)h+=`<h3>Spieltipps</h3><ul class="list">${a.tipps.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+  el.innerHTML=h;
+}
+function deckForPrompt(){
+  const line=e=>{const c=card(e.name);return `${e.qty} ${e.name}${c.missing?'':` | ${c.c||'-'} | ${c.t} | ${c.r.join(',')}${c.o&&!basicOf(e.name)?' | '+c.o.replace(/\n/g,' '):''}`}`};
+  return (deck.commander.length?`COMMANDER:\n${deck.commander.map(line).join('\n')}\n\n`:'')+`DECK:\n${deck.main.map(line).join('\n')}`+(deck.side.length?`\n\nSIDEBOARD:\n${deck.side.map(line).join('\n')}`:'');
+}
+async function runAnalysis(){
+  const st=$('#anaStatus');const btn=$('#btnAnalyse');
+  btn.disabled=true;st.className='status';st.innerHTML='<span class="spin"></span> Claude analysiert dein Deck… (kann ~1 Minute dauern)';
+  const s=stats();
+  const prompt=`Du bist ein erfahrener Magic: The Gathering Deckbau-Coach. Analysiere das folgende Deck gründlich.
+Format: ${fmt()==='commander'?'Commander/EDH (100 Karten, Singleton, 40 Leben)':'60-Karten-Constructed'}.
+Statistik: ${s.lands} Länder, Ø Manawert ${s.avg.toFixed(2)}, Ramp ${s.roles.ramp||0}, Kartenvorteil ${s.roles.draw||0}, Removal ${s.roles.removal||0}, Wipes ${s.roles.wipe||0}.
+
+${deckForPrompt()}
+
+Antworte auf Deutsch und NUR mit JSON nach diesem Schema (Kartennamen exakt wie in der Liste):
+{"archetyp":"kurzer Name des Archetyps",
+"kurz":"2–3 Sätze Gesamteinschätzung",
+"bewertung":{"tempo":1-10,"konstanz":1-10,"interaktion":1-10,"power":1-10},
+"spielplan":{"frueh":"Züge 1–3","mitte":"Züge 4–6","spaet":"ab Zug 7","siegbedingungen":["…"]},
+"combos":[{"karten":["A","B"],"ablauf":"Schritt für Schritt","ergebnis":"was passiert","unendlich":true/false,"im_deck":true/false}],
+"starke_karten":[{"name":"…","warum":"…"}],
+"schwache_karten":[{"name":"…","warum":"…","ersatz":"konkrete Ersatzkarte(n) mit Kurzbegründung"}],
+"mulligan":["Regeln, welche Starthände man behält"],
+"schwaechen":["…"],
+"tipps":["konkrete Spieltipps für dieses Deck"]}
+Combos: zuerst echte Combos/starke Synergien aus Karten, die im Deck SIND (im_deck:true). Danach 1–3 Vorschläge für Combos, für die 1–2 Karten fehlen (im_deck:false, fehlende Karte im Array mit nennen). Erfinde keine Combos, die regeltechnisch nicht funktionieren.
+starke_karten: 6–10, schwache_karten: 5–10. Sei ehrlich und konkret.`;
+  try{
+    const txt=await ask(prompt,{modelTier:'complex',onText:({text})=>{st.innerHTML=`<span class="spin"></span> Claude analysiert dein Deck… ${text&&text!=='Thinking...'?Math.round(text.length/40)+' %':''}`.replace(/(\d+) %/,(m,n)=>Math.min(99,+n)+' %')}});
+    analysis=extractJSON(txt);
+    lsSet('mtg_ana_'+deckHash(),analysis);
+    st.textContent='';renderAnalysis();renderDeck();
+  }catch(e){st.className='status err';st.textContent=aiErr(e)}
+  btn.disabled=!sample;
+}
+
+/* ---------- Simulation ---------- */
+function libraryPool(){const p=[];for(const e of deck.main)for(let i=0;i<e.qty;i++)p.push(e.name);return p}
+function simulate(iter=20000){
+  const pool=libraryPool();const N=pool.length;if(N<8)return null;
+  const land=pool.map(isLand),ramp=pool.map(n=>{const c=card(n);return !c.k.includes('Land')&&c.r.includes('ramp')&&c.v<=3});
+  const idx=[...Array(N).keys()];const T=8;const need=7+T;
+  let open=new Array(8).fill(0),keep=0,ramp7=0,landsSum=0;
+  const hitPlay=new Array(T+1).fill(0),hitDraw=new Array(T+1).fill(0);
+  const lo=fmt()==='commander'?3:2,hi=fmt()==='commander'?5:4;
+  for(let it=0;it<iter;it++){
+    for(let i=0;i<Math.min(need,N);i++){const j=i+Math.floor(Math.random()*(N-i));const t=idx[i];idx[i]=idx[j];idx[j]=t}
+    let l7=0,r7=false;for(let i=0;i<7;i++){if(land[idx[i]])l7++;if(ramp[idx[i]])r7=true}
+    open[Math.min(7,l7)]++;landsSum+=l7;if(l7>=lo&&l7<=hi)keep++;if(r7)ramp7++;
+    let cum=l7,okP=true,okD=true,cumD=l7;
+    for(let t=1;t<=T;t++){
+      if(t>1){const k=idx[7+t-2];if(k!==undefined&&land[k])cum++}
+      if(okP&&cum>=t)hitPlay[t]++;else okP=false;
+      const kd=idx[7+t-1];if(kd!==undefined&&land[kd])cumD++;
+      if(okD&&cumD>=t)hitDraw[t]++;else okD=false;
+    }
+  }
+  return {iter,open,keep:keep/iter,ramp7:ramp7/iter,avg:landsSum/iter,hitPlay:hitPlay.map(x=>x/iter),hitDraw:hitDraw.map(x=>x/iter),lo,hi,screw:(open[0]+open[1])/iter,flood:(open[6]+open[7])/iter};
+}
+const pct=x=>(x*100).toFixed(x<0.1?1:0)+' %';
+function renderSim(){
+  const r=simulate();if(!r){$('#simKpis').innerHTML='<p class="mute">Zu wenige Karten.</p>';return}
+  $('#simKpis').innerHTML=[[r.avg.toFixed(2),'Ø Länder in Starthand'],[pct(r.keep),`${r.lo}–${r.hi} Länder (behaltbar)`],[pct(r.screw),'0–1 Land (Screw)'],[pct(r.flood),'6–7 Länder (Flood)'],[pct(r.ramp7),'Ramp (≤3) in Starthand']].map(([v,l])=>`<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('');
+  let h='<tr><th>bis Zug</th><th class="r">am Zug (Play)</th><th class="r">nicht am Zug (Draw)</th></tr>';
+  for(let t=2;t<=8;t++)h+=`<tr><td>${t}</td><td class="r">${pct(r.hitPlay[t])}</td><td class="r">${pct(r.hitDraw[t])}</td></tr>`;
+  $('#simTable').innerHTML=h;
+  // hypergeom selector
+  const sel=$('#hgCard');const prev=sel.value;
+  const roleOpts=Object.entries(stats().roles).filter(([r])=>ROLE_DE[r]).map(([r,v])=>`<option value="role:${r}">Irgendeine ${ROLE_DE[r]}-Karte (${v})</option>`).join('');
+  sel.innerHTML=`<option value="land:">Länder (${stats().lands})</option>`+roleOpts+'<optgroup label="Einzelne Karte">'+[...deck.main].sort((a,b)=>a.name.localeCompare(b.name)).filter(e=>!basicOf(e.name)).map(e=>`<option value="card:${esc(e.name)}">${esc(e.name)} (${e.qty})</option>`).join('')+'</optgroup>';
+  if(prev&&[...sel.options].some(o=>o.value===prev))sel.value=prev;
+  renderHG();
+}
+function lnC(n,k){if(k<0||k>n)return -Infinity;let s=0;for(let i=1;i<=k;i++)s+=Math.log(n-k+i)-Math.log(i);return s}
+function hyp(N,K,n,k){return Math.exp(lnC(K,k)+lnC(N-K,n-k)-lnC(N,n))}
+function renderHG(){
+  const pool=libraryPool();const N=pool.length;const v=$('#hgCard').value||'land:';
+  const [type,val]=[v.split(':')[0],v.slice(v.indexOf(':')+1)];
+  let K=0;if(type==='land')K=pool.filter(isLand).length;else if(type==='role')K=pool.filter(n=>card(n).r.includes(val)).length;else K=pool.filter(n=>n===val).length;
+  const t=Math.max(0,+$('#hgTurn').value||0);const draw=$('#hgPlay').value==='draw';
+  const n=Math.min(N,7+Math.max(0,t-1)+(draw&&t>0?1:0));
+  let p0=hyp(N,K,n,0),p1=hyp(N,K,n,1);
+  const atLeast1=1-p0,atLeast2=1-p0-p1;
+  $('#hgOut').innerHTML=`<div class="kpis"><div class="kpi"><b>${pct(atLeast1)}</b><span>mind. 1×</span></div><div class="kpi"><b>${K>1?pct(Math.max(0,atLeast2)):'–'}</b><span>mind. 2×</span></div><div class="kpi"><b>${n}</b><span>gesehene Karten</span></div><div class="kpi"><b>${K}/${N}</b><span>Treffer in Bibliothek</span></div></div><p class="mute small" style="margin:8px 0 0">${t===0?'Nur Starthand.':`Starthand + ${n-7} gezogene Karte(n) bis Zug ${t}`}, ohne Mulligan, ohne Extra-Kartenziehen.</p>`;
+}
+function renderHands(){
+  const pool=libraryPool();let h='';
+  for(let k=0;k<5;k++){const a=[...pool];for(let i=0;i<7;i++){const j=i+Math.floor(Math.random()*(a.length-i));[a[i],a[j]]=[a[j],a[i]]}
+    const hand=a.slice(0,7).sort((x,y)=>isLand(y)-isLand(x)||card(x).v-card(y).v);const l=hand.filter(isLand).length;
+    h+=`<div class="hrow"><b>${l} ${l===1?'Land':'Länder'}</b> · ${hand.map(n=>esc(n)).join(' · ')}</div>`}
+  $('#hands').innerHTML=h;
+}
+
+/* ---------- Regel-Engine (lernbare Effekte) ---------- */
+let FX={};let FXL=lsGet('mtg_fx_v1',{});
+const fxOf=n=>FXL[n]||FX[n]||null;
+const fxStatic=(c,k)=>{const f=fxOf(bname(c));return f&&f.static?f.static[k]:undefined};
+const anyStatic=k=>game.bf.some(c=>fxStatic(c,k));
+const typesOf=c=>(cd(c).t||'')+' '+(c.types||'');
+const hasType=(c,t)=>new RegExp('\\b'+t+'\\b').test(typesOf(c));
+const isVillain=c=>hasType(c,'Villain');
+function fxFilter(f){f=f||{};return c=>{const d=card(c.name);
+  if(f.any)return true;
+  if(f.type&&!new RegExp('\\b'+f.type+'\\b').test(d.t))return false;
+  if(f.basic&&!/Basic/.test(d.t))return false;
+  if(f.land===true&&!d.k.includes('Land'))return false;if(f.land===false&&d.k.includes('Land'))return false;
+  if(f.shares_color_legend){const leg=game.bf.filter(x=>/Legendary/.test(cd(x).t)&&isCreatureInst(x)).flatMap(x=>cd(x).f);if(!d.f.some(x=>leg.includes(x)))return false}
+  return true}}
+/* Ereignisse → Trigger-Warteschlange */
+function trigMatch(s,tr,ev,ctx){
+  const f=tr.f||{},I=tr.if||{};
+  if(ev==='etb'&&ctx.c!==s)return false;
+  if(ev==='etb_other'){if(ctx.c===s)return false;if(f.type&&!hasType(ctx.c,f.type))return false}
+  if(ev==='discard'){if(f.other&&ctx.c===s)return false;if(f.land===true&&!ctx.land)return false;if(f.land===false&&ctx.land)return false}
+  if(ev==='draw_nth'&&f.nth&&ctx.nth!==f.nth)return false;
+  if(ev==='attack'&&!(ctx.attackers||[]).includes(s))return false;
+  if(ev==='combat_damage'&&ctx.c!==s)return false;
+  if(ev==='combat_damage_attached'&&s.attachedTo!==ctx.c.id)return false;
+  if(I.lands_min&&(ctx.lands||0)<I.lands_min)return false;
+  if(I.discarded_this_turn&&!game.discTurn)return false;
+  if(I.level&&(s.level||1)!==I.level)return false;
+  if(I.level_min&&(s.level||1)<I.level_min)return false;
+  if(I.back&&!s.tf)return false;if(I.front&&s.tf)return false;
+  if(I.from_gy&&ctx.from!=='gy')return false;
+  if(I.enchanted_opp_attacked&&s.encOpp!==game.focus)return false;
+  return true;
+}
+function emit(ev,ctx={}){
+  if(!game||game.phase!=='play')return;
+  for(const s of [...game.bf]){
+    const fx=fxOf(bname(s));if(!fx||!fx.trig)continue;
+    fx.trig.forEach((tr,i)=>{
+      if(tr.on!==ev||!trigMatch(s,tr,ev,ctx))return;
+      if(tr.once){const k=s.id+'|'+i;if(game.once[k])return;game.once[k]=1}
+      game.queue.push({s,tr,ctx});
+    });
+  }
+}
+let resolving=false;
+async function resolveQueue(){
+  if(!game||resolving)return;resolving=true;let n=0;
+  try{
+    while(game.queue.length){
+      if(++n>3000){game.queue=[];logm('⚠ Über 3000 Trigger – Schleife gestoppt (Endlos-Combo?)');break}
+      const it=game.queue.shift();
+      if(it.s)it.s.glowT=Date.now();
+      await runActions(it.tr.do,{src:it.s,ctx:it.ctx,tr:it.tr});
+    }
+  }finally{resolving=false}
+}
+const settle=async()=>{await resolveQueue();renderGame()};
+/* Grundaktionen */
+function drawOne(){const c=game.library.shift();if(!c){if(!game.emptyWarned){logm('⚠ Bibliothek leer – beim nächsten Ziehen hättest du verloren');game.emptyWarned=1}return false}
+  game.hand.push(c);game.drawnTurn++;emit('draw',{c,nth:game.drawnTurn});emit('draw_nth',{nth:game.drawnTurn});return true}
+function drawCards(n,{step=false,src=''}={}){
+  let tot=0;const tef=anyStatic('teferi');
+  for(let i=0;i<n;i++){const k=(tef&&!(step&&i===0))?2:1;for(let j=0;j<k;j++)if(drawOne())tot++}
+  if(tot)logm(`${src?src+': ':''}zieht ${tot} Karte${tot>1?'n':''}${tef&&tot>n?' (Teferi)':''}`);
+  return tot;
+}
+function discardCards(cards,{src='',cycle=false}={}){
+  if(!cards.length)return;
+  let lands=0;
+  for(const c of cards){detach(c);c.discT=game.turn;game.gy.push(c);game.discTurn++;const land=isLandName(c.name);if(land)lands++;emit('discard',{c,land})}
+  emit('discard_batch',{count:cards.length,lands});
+  logm(`${src?src+': ':''}${cycle?'wandelt um':'wirft ab'}: ${cards.map(c=>c.name).join(', ')}`);
+}
+function autoDiscardPick(n){const h=[...game.hand].sort((a,b)=>(isLandName(b.name)-isLandName(a.name))||(card(b.name).v-card(a.name).v));return h.slice(0,n)}
+async function discardN(n,{src='',random=false}={}){
+  n=Math.min(n,game.hand.length);if(n<=0)return [];
+  let pick;
+  if(random)pick=shuffle([...game.hand]).slice(0,n);
+  else if(game.auto)pick=autoDiscardPick(n);
+  else{const ids=await choose(`${src?src+': ':''}${n} Karte${n>1?'n':''} abwerfen`,game.hand.map(o=>({id:o.id,label:o.name,img:imgOf(o.name)})),{max:n,min:n,note:'Tipp: Länder abwerfen löst Doctor Doom aus.'});
+    pick=ids.map(id=>game.hand.find(x=>x.id===id)).filter(Boolean);if(pick.length<n)pick=pick.concat(autoDiscardPick(n).filter(x=>!pick.includes(x)).slice(0,n-pick.length))}
+  discardCards(pick,{src});return pick;
+}
+async function connive(c,n=1,src){
+  if(!c)return;const nm=cd(c).n;
+  if(anyStatic('connive_draw_first'))drawCards(1,{src:'Leader'});
+  drawCards(n,{src:nm+' connived'});
+  const d=await discardN(n,{src:nm});
+  const nl=d.filter(x=>!isLandName(x.name)).length;
+  if(nl&&game.bf.includes(c)){c.ctr=(c.ctr||0)+nl;c.ctrT=game.turn;logm(`${nm}: +${nl} +1/+1-Marke`)}
+  emit('connive',{c});
+}
+function loseOpp(o,amt,src){if(!o||o.life<=0||amt<=0)return;o.life-=amt;game.dmg+=amt;if(o.peer)net.dealt[o.peer]=(net.dealt[o.peer]||0)+amt;emit('opp_loses_life',{amount:amt,opp:o});
+  if(!game.won&&game.opps.length&&game.opps.every(x=>x.life<=0)){game.won=game.turn;logm(`🏆 Alle Gegner besiegt in Zug ${game.turn}!`)}}
+function oppLose(n,src,{each=true}={}){const ts=each?game.opps.filter(o=>o.life>0):[focusOpp()].filter(Boolean);if(!ts.length||n<=0)return;for(const t of ts)loseOpp(t,n,src);logm(`${src}: ${each?'jeder Gegner verliert':ts[0].name+' verliert'} ${n}`);fxPing(src,n,each?'alle Gegner':ts[0].name)}
+function enterTokens(ts){for(const c of ts){emit('etb',{c,from:'token'});emit('etb_other',{c})}}
+function mkTokens(spec,n=1,src){const ts=[];for(let i=0;i<n;i++){const c=mkToken(spec.name||'Token',{p:spec.p??'1/1',k:spec.k||['Creature'],t:`Token ${(spec.k||['Creature']).join(' ')} — ${spec.types||spec.name}`,treasure:spec.treasure});c.types=spec.types||'';if(spec.tapped)c.tapped=true;ts.push(c)}
+  logm(`${src?src+': ':''}${n}× ${spec.name}-Token`);enterTokens(ts);return ts}
+function treasure(n,tapped,src){return mkTokens({name:'Treasure',k:['Artifact'],p:'',types:'Treasure',treasure:true,tapped},n,src)}
+function toughness(c){const m=String(c.p||cd(c).p||'').match(/\/(\d+)/);let t=m?+m[1]:0;if(fxStatic(c,'power_hand'))t=game.hand.length;t+=(c.ctr||0);if(isVillain(c))t+=2*game.bf.filter(s=>s!==c&&fxStatic(s,'other_villains_pt')).length;return t}
+function indestructible(c){return fxStatic(c,'indestructible_if_artifact_creature')&&game.bf.some(x=>isCreatureInst(x)&&cd(x).k.includes('Artifact'))}
+function killCreature(c,why){detach(c);if(c.token)return;c.tapped=false;c.ctr=0;if(c.commander){game.cmd.push(c);logm(`${c.name} → Kommandozone`)}else game.gy.push(c)}
+async function pickTarget(title,f,opts={}){const list=game.bf.filter(c=>isCreatureInst(c)&&(!f||!f.type||hasType(c,f.type)));if(!list.length)return null;
+  if(game.auto||list.length===1){return opts.prefer?(list.find(opts.prefer)||list[0]):list.sort((a,b)=>power(b)-power(a))[0]}
+  const ids=await choose(title,list.map(o=>({id:o.id,label:`${cd(o).n} (${power(o)}/${toughness(o)})`,img:instImg(o)})),{max:1,min:1});return game.bf.find(x=>x.id===ids[0])||null}
+const numv=(v,env)=>typeof v==='number'?v:v==='ctx.amount'?(env.ctx.amount||0):v==='ctx.count'?(env.ctx.count||0):v==='discarded_turn'?(game.discTurn||0):(+v||0);
+async function runActions(list,env){for(const a of list||[]){try{await runAction(a,env)}catch(e){logm('⚠ Effektfehler: '+(e.message||e))}}}
+async function runAction(a,env){
+  const src=env.src,sn=src?cd(src).n:'';const k=Object.keys(a).find(x=>!['f','note','tapped','unique_turn','random_unless_discarded','min'].includes(x));
+  if(a.note)logm(`${sn}: ${a.note}`);
+  switch(k){
+    case 'draw':drawCards(numv(a.draw,env),{src:sn});break;
+    case 'draw_up_to':{const x=a.draw_up_to-game.hand.length;if(x>0)drawCards(x,{src:sn});break}
+    case 'discard':await discardN(numv(a.discard,env),{src:sn});break;
+    case 'discard_random':await discardN(numv(a.discard_random,env),{src:sn,random:true});break;
+    case 'loot':drawCards(a.loot[0],{src:sn});await discardN(a.loot[1],{src:sn});break;
+    case 'rummage_may':{if(!game.hand.length)break;let yes=game.auto;if(!yes){const r=await choose(`${sn}: eine Karte abwerfen und eine ziehen?`,[{id:1,label:'Ja'},{id:2,label:'Nein'}],{max:1,min:1});yes=r[0]===1}
+      if(yes){await discardN(1,{src:sn});drawCards(1,{src:sn})}break}
+    case 'connive':{const m=a.connive;
+      if(m==='self')await connive(src,1);else if(m==='ctx')await connive(env.ctx.c,1);
+      else if(m==='target'){const t=await pickTarget(`${sn}: welche Kreatur connived?`,a.f,{prefer:c=>isVillain(c)});await connive(t,1)}
+      else if(m==='convoke'){const list=game.bf.filter(isCreatureInst);const ids=game.auto?[]:await choose('Welche Kreaturen haben konvoziert?',list.map(o=>({id:o.id,label:cd(o).n,img:instImg(o)})),{max:99});for(const id of ids){const c=game.bf.find(x=>x.id===id);if(c){c.tapped=true;await connive(c,1)}}}
+      break}
+    case 'connive_x':{const c=game.bf.find(x=>x.id===src.attachedTo);const n=numv(a.connive_x,env);if(c&&n)await connive(c,n);break}
+    case 'opp_lose':oppLose(numv(a.opp_lose,env),sn);break;
+    case 'opp_lose_enchanted':{const o=game.opps[src.encOpp??game.focus];if(o){loseOpp(o,numv(a.opp_lose_enchanted,env));logm(`${sn}: ${o.name} verliert ${a.opp_lose_enchanted}`)}break}
+    case 'opp_dmg':dmgOpp(sn,numv(a.opp_dmg,env),{red:!!src&&cd(src).f.includes('R')});break;
+    case 'dmg_target':dmgOpp(sn,numv(a.dmg_target,env),{each:false,red:!!src&&cd(src).f.includes('R')});break;
+    case 'gain':game.life+=numv(a.gain,env);break;
+    case 'lose':game.life-=numv(a.lose,env);logm(`${sn}: du verlierst ${numv(a.lose,env)}`);break;
+    case 'token':mkTokens(a.token,a.token.n||1,sn);break;
+    case 'treasure':treasure(numv(a.treasure,env),!!a.tapped,sn);break;
+    case 'counter':{const o=a.counter,n=o.n||1;let ts=[];
+      if(o.to==='self')ts=[src];else if(o.to==='ctx')ts=[env.ctx.c];else if(o.to==='villains')ts=game.bf.filter(c=>isCreatureInst(c)&&isVillain(c));
+      else if(o.to==='target'){const t=await pickTarget(`${sn}: +1/+1-Marke auf…`,o.f);if(t)ts=[t]}
+      for(const t of ts.filter(t=>t&&game.bf.includes(t))){t.ctr=(t.ctr||0)+n;t.ctrT=game.turn}
+      if(ts.length)logm(`${sn}: +${n} Marke auf ${ts.map(t=>cd(t).n).join(', ')}`);break}
+    case 'mill':mill(numv(a.mill,env),sn);break;
+    case 'search':{const s=a.search;await searchLib({title:`${sn}: suchen`,filter:fxFilter(s.f),max:s.max||1,dest:s.dest||'hand',tapped:!!s.tapped});break}
+    case 'from_gy':{const s=a.from_gy;const opts=game.gy.filter(fxFilter(s.f));const ids=await choose(`${sn}: aus dem Friedhof`,opts.map(o=>({id:o.id,label:o.name,img:imgOf(o.name)})),{max:s.max||1});
+      for(const id of ids){const c=game.gy.find(x=>x.id===id);if(!c)continue;
+        if(s.dest==='hand'){detach(c);game.hand.push(c);logm(`${sn}: ${c.name} auf die Hand`)}
+        else{if(s.lose_mv){game.life-=card(c.name).v}if(s.haste)c.haste=game.turn;if(s.exile_eot)c.exileEOT=true;await putOnBf([c])}}break}
+    case 'sac_lands':await sacLands(Math.min(a.sac_lands,landsOnBf().length),{title:`${sn}: ${a.sac_lands} Länder opfern`});break;
+    case 'dmg_creatures':{const n=a.dmg_creatures;const dead=game.bf.filter(c=>isCreatureInst(c)&&toughness(c)<=n&&!indestructible(c));dead.forEach(c=>killCreature(c));logm(`${sn}: ${dead.length} eigene Kreaturen sterben`);break}
+    case 'destroy_creatures_except_type':{const t=a.destroy_creatures_except_type;const dead=game.bf.filter(c=>isCreatureInst(c)&&!hasType(c,t)&&!indestructible(c));dead.forEach(c=>killCreature(c));logm(`${sn}: alle Nicht-${t} zerstört (${dead.length} eigene)`);break}
+    case 'wheel':{const h=[...game.hand];discardCards(h,{src:sn});drawCards(Math.max(h.length,0),{src:sn});logm('Windfall: Gegner ziehen ggf. mehr – hier mit deiner Handgröße gerechnet');break}
+    case 'modes':{let modes=a.modes.map((m,i)=>({...m,i}));const key=src.id;game.modesTurn[key]=game.modesTurn[key]||[];
+      if(a.unique_turn)modes=modes.filter(m=>!game.modesTurn[key].includes(m.i));if(!modes.length)break;
+      let m;if(a.random_unless_discarded&&!game.discTurn){m=modes[Math.floor(Math.random()*modes.length)];logm(`${sn}: Zufall → ${m.l}`)}
+      else if(game.auto)m=modes[0];else{const r=await choose(`${sn}: Modus wählen`,modes.map(x=>({id:x.i+1,label:x.l})),{max:1,min:1});m=modes.find(x=>x.i+1===r[0])||modes[0]}
+      game.modesTurn[key].push(m.i);await runActions(m.do,env);break}
+    case 'plan':{src.plan=(src.plan||0)+1;logm(`${sn}: Plan-Marker ${src.plan}/${a.plan.max}`);if(src.plan>=a.plan.max&&game.bf.includes(src)){detach(src);game.gy.push(src);src.plan=0;await runActions(a.plan.done,env)}break}
+    case 'glorious':{const t=game.library.splice(0,a.glorious);game.hand.push(...t);logm(`Glorious Purpose: ${t.map(c=>c.name).join(', ')} – Zauber davon gratis wirken (Rest auf die Hand)`);break}
+    case 'mana':game.pool+=numv(a.mana,env);break;
+    case 'untap_lands':{let n=a.untap_lands;for(const c of landsOnBf())if(c.tapped&&n>0){c.tapped=false;n--}break}
+    case 'transform':src.tf=!src.tf;logm(`${card(src.name).n} transformiert → ${cd(src).n}`);break;
+    case 'level':src.level=a.level;logm(`${sn}: Stufe ${a.level}`);break;
+    case 'loki_copy':{const vs=game.bf.filter(c=>c!==src&&isCreatureInst(c)&&isVillain(c));if(!vs.length)break;const t=await pickTarget('Loki: welchen Schurken kopieren?',{type:'Villain'},{prefer:c=>c!==src});const v=t&&t!==src?t:vs[0];
+      const tok=mkToken(bname(v),{p:v.p||cd(v).p,k:cd(v).k,t:'Token-Kopie (Illusion)',copyImg:true});tok.types='Illusion Villain';tok.tapped=true;tok.sacEOT=true;(env.ctx.attackers||[]).push(tok);logm(`Loki: angreifende Kopie von ${cd(v).n}`);emit('etb_other',{c:tok});break}
+    case 'kefka_discard':{const d=await discardN(1,{src:sn});const types=new Set(d.flatMap(c=>card(c.name).k));if(types.size)drawCards(types.size,{src:sn});logm('Kefka: Kartentypen der Gegner-Abwürfe bitte manuell dazuzählen');break}
+    case 'converter':{const opts=game.gy;const ids=await choose('Currency Converter: welche (abgeworfene) Karte umwandeln?',opts.map(o=>({id:o.id,label:o.name,img:imgOf(o.name)})),{max:1});const c=game.gy.find(x=>x.id===ids[0]);if(c){detach(c);game.ex.push(c);if(isLandName(c.name))treasure(1,false,sn);else mkTokens({name:'Rogue',p:'2/2',types:'Rogue'},1,sn)}break}
+    case 'exile_my_gy':game.ex.push(...game.gy.splice(0));logm(`${sn}: Friedhöfe exiliert`);break;
+    case 'schedule_upkeep':game.delayed.push(a.schedule_upkeep);break;
+    case 'manual':logm(`ℹ ${sn}: ${a.manual}`);break;
+    default:logm(`ℹ ${sn}: nicht automatisiert (${esc(JSON.stringify(a)).slice(0,80)})`);
+  }
+}
+/* Regeln als Text */
+const EV_DE={etb:'Wenn diese Karte ins Spiel kommt',etb_other:'Wenn eine andere Kreatur ins Spiel kommt',landfall:'Landfall',cast:'Wenn du einen Zauber wirkst',draw:'Wenn du eine Karte ziehst',draw_nth:'Wenn du deine n-te Karte im Zug ziehst',discard:'Wenn du eine Karte abwirfst',discard_batch:'Wenn du Karten abwirfst',connive:'Wenn eine deiner Kreaturen connived',attack:'Wenn diese Kreatur angreift',attack_any:'Wenn du angreifst',combat_damage:'Kampfschaden an Spieler',combat_damage_attached:'Ausgerüstete/verzauberte Kreatur macht Kampfschaden',villain_combat_damage:'Schurken machen Kampfschaden',upkeep:'Versorgungsschritt',combat_start:'Kampfbeginn',end_step:'Endphase',opp_loses_life:'Wenn ein Gegner Leben verliert',dies:'Wenn sie stirbt'};
+function fxText(fx){if(!fx)return '';const A=l=>(l||[]).map(a=>{const k=Object.keys(a).find(x=>!['f','note','tapped','unique_turn','random_unless_discarded'].includes(x));const v=a[k];return k==='manual'?'„'+v+'“':k+(typeof v==='object'?'':' '+v)}).join(', ');
+  const out=[];(fx.trig||[]).forEach(t=>out.push(`<li><b>${EV_DE[t.on]||t.on}${t.f&&t.f.type?' ('+t.f.type+')':''}${t.f&&t.f.nth?' (#'+t.f.nth+')':''}:</b> ${esc(A(t.do))}</li>`));
+  (fx.act||[]).forEach(t=>out.push(`<li><b>Fähigkeit „${esc(t.l)}“:</b> ${esc(A(t.do))}</li>`));if(fx.spell)out.push(`<li><b>Zauber:</b> ${esc(A(fx.spell))}</li>`);
+  if(fx.static)out.push(`<li><b>Statisch:</b> ${esc(Object.keys(fx.static).join(', '))}</li>`);return out.length?`<ul class="list small">${out.join('')}</ul>`:'<p class="small mute">Keine automatischen Effekte.</p>'}
+const HARD=new Set();
+function hasRules(n){if(basicOf(n))return true;return !!fxOf(n)||HARD.has(n)}
+function needsRules(n){if(hasRules(n))return false;const d=card(n);if(d.missing)return true;if(d.o&&d.o.split('\n').every(l=>/^\{T\}: Add|^\(|^\{T\}, Pay 1 life/.test(l.trim())))return false;if(d.k.includes('Land')&&!/Cycling|enters|When|Whenever|\{T\}, /.test(d.o||'x'))return false;return true}
+/* Lernen über Claude */
+const DSL_SPEC=`Format je Karte: {"trig":[{"on":EVENT,"f":{...},"if":{...},"once":bool,"do":[AKTIONEN]}],"act":[{"l":"Label","cost":{"tap":1,"sac":1,"life":n,"sac_creature":1},"do":[...]}],"spell":[AKTIONEN],"static":{...},"cycle":[AKTIONEN]}
+EVENTS: etb (diese Karte kommt ins Spiel; if.from_gy), etb_other (f.type z.B. "Villain"), landfall, draw (jede Karte), draw_nth (f.nth:2 = zweite Karte im Zug), discard (jede abgeworfene Karte; f.land true/false; f.other), discard_batch (ctx.count, ctx.lands; if.lands_min), connive, attack (diese Kreatur greift an), attack_any (du greifst an), combat_damage (diese Kreatur macht Kampfschaden an Spieler, ctx.amount), combat_damage_attached (Aura/Ausrüstung), villain_combat_damage, upkeep, combat_start, end_step, opp_loses_life (ctx.amount).
+IF: discarded_this_turn, level, level_min, back, front, from_gy.
+AKTIONEN (je Objekt ein Schlüssel; Zahlen oder "ctx.amount"/"ctx.count"/"discarded_turn"): {"draw":n} {"draw_up_to":n} {"discard":n} {"discard_random":n} {"loot":[ziehen,abwerfen]} {"rummage_may":1} {"connive":"self"|"ctx"|"target"|"convoke","f":{"type":"Villain"}} {"connive_x":"ctx.amount"} {"opp_lose":n} {"opp_dmg":n} {"dmg_target":n} {"gain":n} {"lose":n} {"token":{"name":"Zombie","p":"2/2","k":["Creature"],"types":"Zombie","n":1}} {"treasure":n,"tapped":bool} {"counter":{"n":1,"to":"self"|"ctx"|"villains"|"target","f":{"type":"Goblin"}}} {"mill":n} {"search":{"f":{"type":"Creature"|"Land"|"any":true,"basic":true},"dest":"hand"|"bf"|"top","max":1,"tapped":bool}} {"from_gy":{"f":{...},"dest":"hand"|"bf","max":1}} {"sac_lands":n} {"dmg_creatures":n} {"wheel":1} {"modes":[{"l":"..","do":[..]}],"unique_turn":bool,"random_unless_discarded":bool} {"plan":{"max":n,"done":[..]}} {"mana":n} {"untap_lands":n} {"transform":1} {"level":n} {"manual":"Kurzer deutscher Hinweis für alles Nicht-Automatisierbare"}
+STATIC (Schlüssel): cycling:"{2}", flashback:"{2}{R}", mayhem:"{2}{U}", equip:"{2}", aura:"creature"|"opponent", other_villains_pt:2, hand_max:8, teferi:true, power_hand:true, lifelink:true, lifelink_all:true, connive_draw_first:true, indestructible_if_artifact_creature:true, extra_land:1, play_lands_from_gy:true.
+Länder ohne besondere Fähigkeit und Manafähigkeiten weglassen ({}). Gegnerische Entscheidungen/Ziele, die nicht modelliert sind → "manual".`;
+async function learnRules(names,statusEl){
+  if(!sample){statusEl.className='status err';statusEl.textContent='Lernen braucht die Claude-Funktion (über claude.ai öffnen).';return}
+  const batches=[];for(let i=0;i<names.length;i+=8)batches.push(names.slice(i,i+8));
+  let done=0,ok=0;statusEl.className='status';
+  for(const b of batches){
+    statusEl.innerHTML=`<span class="spin"></span> Claude lernt Regeln… ${done}/${names.length}`;
+    const list=b.map(n=>{const d=card(n);return `### ${n}\nTyp: ${d.t}\nKosten: ${d.c||'-'}\nText: ${d.o||d.s||'(unbekannt – nutze dein Wissen über die Karte)'}${d.back?`\nRückseite ${d.back.n}: ${d.back.o}`:''}`}).join('\n\n');
+    const prompt=`Du übersetzt Magic: The Gathering Regeltexte in eine Effekt-Sprache für einen Solo-Decktester (Gegner werden nur als Lebenspunkte simuliert).\n${DSL_SPEC}\n\nAntworte NUR mit einem JSON-Objekt {"Kartenname": {...}, ...} für diese Karten:\n\n${list}`;
+    try{const t=await ask(prompt,{modelTier:'complex'});const obj=extractJSON(t);
+      for(const n of b){const fx=obj[n]||obj[Object.keys(obj).find(k=>norm(k)===norm(n))];if(fx&&typeof fx==='object'){FXL[n]={...fx,learned:true};ok++}else FXL[n]={learned:true,trig:[],note:'keine Regeln'}}
+      lsSet('mtg_fx_v1',FXL);
+    }catch(e){statusEl.className='status err';statusEl.textContent=aiErr(e);if(e&&e.code==='not_granted')return}
+    done+=b.length;
+  }
+  statusEl.className='status';statusEl.textContent=`✓ Regeln für ${ok} Karte(n) gelernt und gespeichert. In der Kartenansicht prüfen/bearbeiten.`;
+  renderAll();
+}
+function rulesSheet(name){
+  const fx=fxOf(name);
+  sheet(`<h2 style="padding-right:30px">Regeln: ${esc(name)}</h2><p class="mute small">${FXL[name]?(FXL[name].learned?'Von Claude gelernt':'Von dir bearbeitet'):(FX[name]?'Mitgeliefert':'Noch keine Regeln')} · JSON in der Effekt-Sprache</p>
+   <textarea id="fxEdit" style="min-height:220px">${esc(JSON.stringify(fx||{},null,1))}</textarea>
+   <div class="acts"><button class="btn pri" data-fxsave="${esc(name)}">Speichern</button>${sample?`<button class="btn ai" data-fxlearn="${esc(name)}">✦ Neu lernen</button>`:''}${FXL[name]?`<button class="btn" data-fxreset="${esc(name)}">Zurücksetzen</button>`:''}</div><div class="status" id="fxStatus"></div>`);
+}
+/* ---------- Game ---------- */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function inst(name,extra={}){return {id:++uid,name,tapped:false,...extra}}
+function newGame(onPlay){
+  const lib=[];for(const e of deck.main)for(let i=0;i<e.qty;i++)lib.push(inst(e.name));
+  const L=fmt()==='commander'?40:20;
+  const nOpp=(game&&game.nOpp)||(fmt()==='commander'?3:1);
+  game={library:shuffle(lib),hand:[],bf:[],gy:[],ex:[],cmd:deck.commander.flatMap(e=>Array.from({length:e.qty},()=>inst(e.name,{commander:true}))),
+    turn:0,life:L,onPlay:onPlay!==undefined?onPlay:(game?game.onPlay:true),mulls:0,bottom:0,phase:'mull',log:[],tax:{},landsPlayed:0,tip:'',
+    nOpp,opps:Array.from({length:nOpp},(_,i)=>({name:'Gegner '+(i+1),life:L})),focus:0,pool:0,res:{},dmg:0,won:0,queue:[],once:{},delayed:[],discTurn:0,drawnTurn:0,modesTurn:{},auto:game?!!game.auto:false};
+  drawN(7,true);logm('Neues Spiel – 7 Karten gezogen.');net.first=false;renderGame();if(table)setTimeout(netSync,0);
+}
+function logm(t){game.log.unshift((game.turn?`Z${game.turn}: `:'')+t);game.log=game.log.slice(0,80)}
+function drawN(n,silent){if(!silent&&game.phase==='play'){drawCards(n);return}for(let i=0;i<n;i++){const c=game.library.shift();if(!c){logm('Bibliothek leer!');break}game.hand.push(c);if(!silent)logm('Gezogen: '+c.name)}}
+function mulligan(){game.library.push(...game.hand);game.hand=[];shuffle(game.library);game.mulls++;drawN(7,true);logm(`Mulligan ${game.mulls}`);game.tip='';renderGame()}
+function keepHand(){const free=fmt()==='commander'?1:0;game.bottom=Math.max(0,game.mulls-free);if(game.bottom>0){game.phase='bottom'}else startTurns();renderGame()}
+function startTurns(){game.phase='play';game.turn=1;game.landsPlayed=0;logm(`Hand behalten (${game.hand.length} Karten). ${game.onPlay?'Du beginnst.':'Du ziehst zuerst.'}`);if(!game.onPlay)drawN(1);game.tip='';if(table)setTimeout(netSync,0)}
+async function endPhase(){
+  emit('end_step');await resolveQueue();
+  for(const c of game.bf.filter(c=>c.sacEOT)){detach(c);logm(`${cd(c).n} (Token-Kopie) geopfert`)}
+  for(const c of game.bf.filter(c=>c.exileEOT)){detach(c);c.exileEOT=false;game.ex.push(c);logm(`${c.name} exiliert (Whip)`)}
+  const max=Math.max(7,...game.bf.map(c=>fxStatic(c,'hand_max')||0));
+  if(game.hand.length>max){await discardN(game.hand.length-max,{src:'Handlimit'});await resolveQueue()}
+  const vx=game.ex.filter(c=>c.vx);if(vx.length){for(const c of vx){c.vx=false;detach(c);game.gy.push(c)}logm(`Valakut Exploration: ${vx.length} Karte(n) in den Friedhof`)}
+}
+async function beginTurn(){
+  game.turn++;game.landsPlayed=0;game.res={};game.pool=0;game.once={};game.discTurn=0;game.drawnTurn=0;game.modesTurn={};for(const c of game.bf)c.tapped=false;
+  for(const c of game.bf.filter(c=>bname(c)==='Glacial Chasm')){c.age=(c.age||0)+1;game.life-=2*c.age;logm(`Glacial Chasm: kumulative Unterhaltskosten ${2*c.age} Leben`)}
+  const del=game.delayed;game.delayed=[];for(const d of del)await runActions(d,{src:null,ctx:{}});
+  emit('upkeep');await resolveQueue();
+  drawCards(1,{step:true});await resolveQueue();
+  game.tip='';renderGame();
+}
+async function nextTurn(){
+  await endPhase();
+  if(netTurnMode()){logm('Zug beendet – weitergegeben');netPass();renderGame();return}
+  await beginTurn();
+}
+const ZN={hand:'Hand',bf:'Schlachtfeld',gy:'Friedhof',ex:'Exil',cmd:'Kommandozone',library:'Bibliothek'};
+const ZONES=['hand','bf','gy','ex','cmd','library'];
+function findCard(id){for(const z of ZONES){const i=game[z].findIndex(c=>c.id===id);if(i>=0)return {z,i,c:game[z][i]}}return null}
+function detach(c){for(const z of ZONES){const i=game[z].indexOf(c);if(i>=0){game[z].splice(i,1);return z}}return null}
+function move(id,to){
+  const f=findCard(id);if(!f)return;
+  if(to==='bf'){putOnBf([f.c]);return}
+  game[f.z].splice(f.i,1);const c=f.c;c.tapped=false;c.vx=false;
+  if(c.token){logm(`Token ${c.name} entfernt`);renderGame();return}
+  if(c.flip&&to!=='bf')c.flip=false;
+  c.copyOf=null;
+  if(to==='libtop')game.library.unshift(c);else if(to==='libbot')game.library.push(c);else game[to].push(c);
+  logm(`${c.name}: ${ZN[f.z]} → ${to==='libtop'?'oben auf Bibliothek':to==='libbot'?'unter Bibliothek':ZN[to]}`);
+  renderGame();
+}
+
+/* --- Kartenlogik --- */
+const TEMPLE={n:'Temple of Power',c:'',v:0,t:'Land',k:['Land'],f:['R'],m:['R'],r:[],p:'',s:'Rückseite von Ojer Axonil: tappt für {R}.',o:''};
+function cd(c){
+  if(c.token)return {n:c.name,c:'',v:0,t:c.tt||'Token',k:c.k||['Creature'],f:[],m:c.m||[],r:[],p:c.p||'',s:c.s||'',o:''};
+  if(c.flip)return TEMPLE;
+  if(c.tf){const b=card(c.name);if(b.back)return {...b,n:b.back.n,t:b.back.t,p:b.back.p,o:b.back.o,k:['Land','Creature','Artifact','Enchantment','Instant','Sorcery','Planeswalker'].filter(k=>b.back.t.includes(k))}}
+  if(c.copyOf)return card(c.copyOf);
+  return card(c.name);
+}
+const bname=c=>c.flip?'Temple of Power':c.token?c.name:(c.copyOf||c.name);
+const onBf=n=>game.bf.filter(c=>bname(c)===n);
+const has=n=>onBf(n).length>0;
+function isCreatureInst(c){return cd(c).k.includes('Creature')}
+function isLandInst(c){const d=cd(c);if(d.k.includes('Land')||c.landTok)return true;return !c.token&&d.k.includes('Creature')&&has('Ashaya, Soul of the Wild')}
+function landTypes(c){let t=cd(c).t||'';if(isLandInst(c)){if(has('Dryad of the Ilysian Grove'))t+=' Plains Island Swamp Mountain Forest';if(has('Yavimaya, Cradle of Growth')||c.landTok)t+=' Forest';if(!c.token&&isCreatureInst(c))t+=' Forest'}return t}
+const isMountain=c=>isLandInst(c)&&/Mountain/.test(landTypes(c));
+const landsOnBf=()=>game.bf.filter(isLandInst);
+function power(c){const n=bname(c);let p;if(n==='Lumra, Bellow of the Woods'||n==='Ashaya, Soul of the Wild')p=landsOnBf().length;else if(fxStatic(c,'power_hand'))p=game.hand.length;else{const m=String(c.p||cd(c).p||'').match(/^(\d+)/);p=m?+m[1]:0}
+  p+=(c.ctr||0);if(isCreatureInst(c)&&isVillain(c))p+=2*game.bf.filter(s=>s!==c&&fxStatic(s,'other_villains_pt')).length;return p}
+const isLandName=n=>card(n).k.includes('Land');
+function landDrops(){return 1+onBf('Exploration').length+onBf('Dryad of the Ilysian Grove').length+onBf('Oracle of Mul Daya').length+onBf('Mina and Denn, Wildborn').length+onBf('Icetill Explorer').length+2*onBf('Azusa, Lost but Seeking').length}
+const gyPlay=()=>['Crucible of Worlds','Ramunap Excavator','Mole Man, Moloid Master','Icetill Explorer','Ancient Greenwarden','Conduit of Worlds'].some(has);
+const topPlay=()=>has('Oracle of Mul Daya')||has('Traveling Chocobo');
+function mkToken(name,o={}){const c=inst(name,{token:true,p:o.p??'1/1',k:o.k||['Creature'],tt:o.t||('Token '+(o.k||['Creature']).join(' ')),landTok:!!o.landTok,treasure:!!o.treasure,lander:!!o.lander,copyImg:!!o.copyImg,entered:game.turn,bornT:Date.now()});game.bf.push(c);return c}
+function mill(n,src){const m=game.library.splice(0,n);game.gy.push(...m);if(m.length)logm(`${src?src+': ':''}Millt ${m.map(c=>c.name).join(', ')}`)}
+function ojerPow(){const o=game.bf.filter(c=>!c.flip&&c.name==='Ojer Axonil, Deepest Might');return o.length?Math.max(...o.map(power)):0}
+function focusOpp(){let o=game.opps[game.focus];if(!o||o.life<=0)o=game.opps.find(x=>x.life>0);return o}
+function dmgOpp(src,amt,{each=true,red=false,combat=false}={}){
+  const op=(red&&!combat)?ojerPow():0;const boosted=op>amt;if(boosted)amt=op;
+  const ts=each?game.opps.filter(o=>o.life>0):[focusOpp()].filter(Boolean);
+  if(!ts.length||amt<=0)return;
+  for(const t of ts)loseOpp(t,amt,src);
+  logm(`${src}: ${amt} Schaden ${each?'an jedem Gegner':'an '+ts[0].name}${boosted?' (Ojer)':''}`);fxPing(src,amt,each?'alle Gegner':ts[0].name);
+}
+const ENTERS_TAPPED=c=>{const n=bname(c);
+  if(['Field of the Dead','Gruul Turf','Lotus Field','Valakut, the Molten Pinnacle','Commercial District'].includes(n))return true;
+  if(n==='Cinder Glade')return landsOnBf().filter(x=>/Basic/.test(cd(x).t)).length<2;
+  if(n==='Spire Garden')return game.opps.filter(o=>o.life>0).length<2;
+  if(n==='Shifting Woodland')return !landsOnBf().some(x=>/Forest/.test(landTypes(x)));
+  const o=(cd(c).o||'').split('\n//\n')[0];let m;
+  if(/enters tapped\./.test(o))return true;
+  if(/enters tapped unless you control two or more basic lands/.test(o))return landsOnBf().filter(x=>/Basic/.test(cd(x).t)).length<2;
+  if(/enters tapped unless you control two or more other lands/.test(o))return landsOnBf().length<2;
+  if(/enters tapped unless you have two or more opponents/.test(o))return game.opps.filter(x=>x.life>0).length<2;
+  if((m=o.match(/enters tapped unless you control an? (\w+) or an? (\w+)/)))return !landsOnBf().some(x=>new RegExp(m[1]+'|'+m[2]).test(landTypes(x)));
+  if((m=o.match(/enters tapped unless you control an? (\w+)\./)))return !landsOnBf().some(x=>new RegExp(m[1]).test(landTypes(x)));
+  return false};
+
+/* Landfall: Auslöser pro Land, verdoppelt durch Ancient Greenwarden / Traveling Chocobo */
+const LANDFALL={
+  'Tannuk, Memorial Ensign':{run:s=>{dmgOpp('Tannuk',1,{red:true});const r=game.res[s.id]=(game.res[s.id]||0)+1;if(r===2){drawCards(1,{src:'Tannuk (2. Auflösung)'})}}},
+  'Sabotender':{run:()=>dmgOpp('Sabotender',1,{red:true})},
+  'Lotus Cobra':{run:()=>{game.pool++}},
+  'Nissa, Resurgent Animist':{run:s=>{game.pool++;const r=game.res[s.id]=(game.res[s.id]||0)+1;if(r===2){const rev=[];let hit=null;while(game.library.length){const c=game.library.shift();if(/Elf|Elemental/.test(card(c.name).t)){hit=c;break}rev.push(c)}
+    if(hit){game.hand.push(hit)}game.library.push(...shuffle(rev));logm(`Nissa: ${hit?hit.name+' auf die Hand':'nichts gefunden'} (${rev.length} unten)`)}}},
+  'Scute Swarm':{run:()=>{if(landsOnBf().length>=6){mkToken('Scute Swarm',{copyImg:true,t:'Token-Kopie — Insect'});logm('Scute Swarm: Kopie erzeugt')}else{mkToken('Insect');logm('Scute Swarm: Insekt-Token')}}},
+  'Mole Man, Moloid Master':{run:()=>{mkToken('Moloid');logm('Mole Man: Moloid-Token')}},
+  'Tireless Provisioner':{run:()=>{mkToken('Treasure',{k:['Artifact'],p:'',treasure:true,t:'Token Artefakt — Schatz'});logm('Tireless Provisioner: Schatz')}},
+  'Field of the Dead':{run:()=>{const names=new Set(landsOnBf().map(c=>cd(c).n));if(names.size>=7){mkToken('Zombie',{p:'2/2'});logm('Field of the Dead: Zombie')}}},
+  'Icetill Explorer':{run:()=>mill(1,'Icetill Explorer')},
+  'Valakut Exploration':{run:()=>{const c=game.library.shift();if(c){c.vx=true;game.ex.push(c);logm(`Valakut Exploration: ${c.name} exiliert (diesen Zug spielbar)`)}}},
+  'Valakut, the Molten Pinnacle':{cond:(s,L)=>isMountain(L)&&landsOnBf().filter(x=>x!==s&&isMountain(x)).length>=5,run:()=>dmgOpp('Valakut',3,{each:false})},
+};
+function landsEntered(arr){
+  if(!arr.length)return;
+  const mult=1+onBf('Ancient Greenwarden').length+onBf('Traveling Chocobo').length;
+  const src=[...game.bf];
+  for(const L of arr)for(const s of src){
+    if(!game.bf.includes(s))continue;const h=LANDFALL[bname(s)];if(!h)continue;
+    if(h.cond&&!h.cond(s,L))continue;
+    s.glowT=Date.now();for(let i=0;i<mult;i++)h.run(s,L);
+  }
+  for(const L of arr)emit('landfall',{c:L});
+  if(mult>1)logm(`Landfall-Trigger ×${mult}`);
+}
+async function putOnBf(cards,{tapped=false,silent=false}={}){
+  const entered=[];
+  for(const c of cards){
+    c.from=detach(c);c.vx=false;
+    if(c.name==='Vesuva'&&!c.copyOf&&!c.flip){
+      const opts=landsOnBf().filter(x=>!x.token);
+      const r=await choose('Vesuva: welches Land kopieren?',opts.map(o=>({id:o.id,label:cd(o).n,img:instImg(o)})),{max:1,note:'Vesuva kommt getappt als Kopie ins Spiel.'});
+      const o=r.length&&game.bf.find(x=>x.id===r[0]);if(o)c.copyOf=bname(o);
+    }
+    const sfx=fxOf(c.name)||{};
+    if(sfx.static&&sfx.static.clone&&!c.copyOf){const opts=game.bf.filter(isCreatureInst);if(opts.length){const r=await choose(`${c.name}: als Kopie welcher Kreatur?`,opts.map(o=>({id:o.id,label:cd(o).n,img:instImg(o)})),{max:1,note:'Keine Auswahl = ohne Kopie'});const o=r.length&&game.bf.find(x=>x.id===r[0]);if(o)c.copyOf=bname(o)}}
+    let tp=tapped||ENTERS_TAPPED(c)||(c.name==='Vesuva'&&!!c.copyOf);
+    if(isLandInst(c)&&(has('Spelunking')||has('Horizon Explorer')))tp=false;
+    if(has('Amulet of Vigor'))tp=false;
+    if(bname(c)==='Stomping Ground'){game.life-=2}
+    c.tapped=tp;c.entered=game.turn;c.bornT=Date.now();game.bf.push(c);entered.push(c);
+    if(c.commander&&game.cmdCast===c.id){}
+    if(!silent)logm(`${cd(c).n}${c.copyOf?' (Vesuva)':''} kommt ins Spiel${tp?' getappt':''}`);
+  }
+  for(const c of entered){const st=(fxOf(bname(c))||{}).static||{};
+    if(st.aura==='creature'||st.equip){const t=st.aura==='creature'?await pickTarget(`${c.name}: an welche Kreatur?`):null;if(t){c.attachedTo=t.id;logm(`${c.name} → ${cd(t).n}`)}}
+    if(st.aura==='opponent'){c.encOpp=game.focus;logm(`${c.name} verzaubert ${game.opps[game.focus].name}`)}}
+  for(const c of entered){const h=ETB[bname(c)];if(h&&game.bf.includes(c))await h(c)}
+  for(const c of entered){emit('etb',{c,from:c.from});emit('etb_other',{c})}
+  landsEntered(entered.filter(isLandInst));
+  await resolveQueue();
+  renderGame();
+}
+/* Hilfen für Effekte */
+const anyLand=c=>isLandName(c.name);
+const typeLand=types=>c=>anyLand(c)&&types.some(t=>card(c.name).t.includes(t));
+const basicLand=c=>anyLand(c)&&/Basic/.test(card(c.name).t);
+async function searchLib({title,filter,max=1,dest='bf',tapped=false,note=''}){
+  const opts=game.library.filter(filter).sort((a,b)=>a.name.localeCompare(b.name));
+  const ids=await choose(title,opts.map(o=>({id:o.id,label:o.name,img:imgOf(o.name)})),{max,note:note||(opts.length?'':'Keine passende Karte in der Bibliothek.')});
+  const ch=ids.map(id=>game.library.find(c=>c.id===id)).filter(Boolean);
+  if(dest==='top'){for(const c of ch){detach(c)}shuffle(game.library);game.library.unshift(...ch);logm(`Gesucht (oben): ${ch.map(c=>c.name).join(', ')}`)}
+  else{shuffle(game.library);
+    if(dest==='hand'){for(const c of ch){detach(c);game.hand.push(c)}if(ch.length)logm(`Gesucht (Hand): ${ch.map(c=>c.name).join(', ')}`)}
+    else if(ch.length)await putOnBf(ch,{tapped});}
+  if(!ch.length)logm('Suche: nichts genommen (gemischt)');
+  return ch;
+}
+async function sacLands(n,{min,title}={}){
+  const opts=landsOnBf();
+  const ids=await choose(title||`${n===99?'Beliebig viele':n} Land/Länder opfern`,opts.map(o=>({id:o.id,label:cd(o).n,img:instImg(o)})),{max:n,min:min??Math.min(n,opts.length)});
+  let k=0;for(const id of ids){const c=game.bf.find(x=>x.id===id);if(!c)continue;detach(c);k++;if(!c.token){c.tapped=false;c.copyOf=null;game.gy.push(c)}}
+  if(k)logm(`${k} Land/Länder geopfert`);return k;
+}
+async function askX(title){const r=await askNumber(title,3);return Math.max(0,r|0)}
+const SPELL={
+  'Farseek':()=>searchLib({title:'Farseek: Ebene/Insel/Sumpf/Berg suchen',filter:typeLand(['Plains','Island','Swamp','Mountain']),tapped:true}),
+  "Nature's Lore":()=>searchLib({title:"Nature's Lore: Wald suchen",filter:typeLand(['Forest'])}),
+  'Three Visits':()=>searchLib({title:'Three Visits: Wald suchen',filter:typeLand(['Forest'])}),
+  'Harrow':async()=>{if(await sacLands(1))await searchLib({title:'Harrow: bis zu 2 Standardländer',filter:basicLand,max:2})},
+  'Roiling Regrowth':async()=>{if(await sacLands(1))await searchLib({title:'Roiling Regrowth: bis zu 2 Standardländer',filter:basicLand,max:2,tapped:true})},
+  'Entish Restoration':async()=>{if(await sacLands(1)){const n=game.bf.some(c=>isCreatureInst(c)&&power(c)>=4)?3:2;await searchLib({title:`Entish Restoration: bis zu ${n} Standardländer`,filter:basicLand,max:n,tapped:true})}},
+  'Crop Rotation':async()=>{if(await sacLands(1))await searchLib({title:'Crop Rotation: beliebiges Land',filter:anyLand})},
+  'Reshape the Earth':()=>searchLib({title:'Reshape the Earth: bis zu 10 Länder',filter:anyLand,max:10,tapped:true}),
+  'Scapeshift':async()=>{const n=await sacLands(99,{min:0,title:'Scapeshift: beliebig viele Länder opfern'});if(n)await searchLib({title:`Scapeshift: bis zu ${n} Länder suchen`,filter:anyLand,max:n,tapped:true})},
+  'Splendid Reclamation':()=>putOnBf(game.gy.filter(anyLand),{tapped:true}),
+  'Awaken the Woods':async()=>{const x=await askX('Awaken the Woods: X = ?');const ts=[];for(let i=0;i<x;i++)ts.push(mkToken('Forest Dryad',{landTok:true,k:['Creature','Land'],t:'Token Land-Kreatur — Forest Dryad'}));logm(`${x} Forest-Dryad-Länder erzeugt`);landsEntered(ts)},
+  'Life from the Loam':async()=>{const ids=await choose('Life from the Loam: bis zu 3 Länder auf die Hand',game.gy.filter(anyLand).map(o=>({id:o.id,label:o.name,img:imgOf(o.name)})),{max:3});for(const id of ids){const c=game.gy.find(x=>x.id===id);detach(c);game.hand.push(c)}logm(`Life from the Loam: ${ids.length} Länder auf die Hand`)},
+  "Archdruid's Charm":async()=>{const m=await choose("Archdruid's Charm: Modus",[{id:1,label:'Kreatur oder Land suchen'},{id:2,label:'Kampf-Removal (manuell)'},{id:3,label:'Artefakt/Verzauberung exilieren (manuell)'}],{max:1,min:1});
+    if(m[0]===1){const ch=await searchLib({title:'Kreatur (→ Hand) oder Land (→ Feld, getappt)',filter:c=>anyLand(c)||card(c.name).k.includes('Creature'),dest:'hand'});for(const c of ch)if(anyLand(c))await putOnBf([c],{tapped:true})}else logm("Archdruid's Charm: Modus manuell ausführen")},
+  'Blasphemous Act':async()=>{
+    const cre=game.bf.filter(isCreatureInst).filter(c=>!indestructible(c));const hex=cre.filter(c=>bname(c)==='Hexhaven Invigorator').length;const ojer=cre.filter(c=>!c.flip&&c.name==='Ojer Axonil, Deepest Might');
+    for(const c of cre){if(indestructible(c)){logm(`${c.name} ist unzerstörbar`);continue}detach(c);if(c.token)continue;c.tapped=false;if(ojer.includes(c))continue;if(c.commander){game.cmd.push(c);logm(`${c.name} → Kommandozone`)}else game.gy.push(c)}
+    logm(`Blasphemous Act: ${cre.length} Kreaturen zerstört`);
+    for(let i=0;i<hex;i++)await searchLib({title:'Hexhaven Invigorator (13 Schaden): bis zu 13 Länder',filter:anyLand,max:13,tapped:true});
+    for(const o of ojer){o.flip=true;logm('Ojer Axonil kehrt als Temple of Power zurück');await putOnBf([o],{tapped:true})}},
+  "Green Sun's Zenith":async()=>{const x=await askX("Green Sun's Zenith: X = ?");await searchLib({title:`Grüne Kreatur mit MW ≤ ${x}`,filter:c=>card(c.name).k.includes('Creature')&&card(c.name).f.includes('G')&&card(c.name).v<=x})},
+  'Finale of Devastation':async()=>{const x=await askX('Finale of Devastation: X = ?');const f=c=>card(c.name).k.includes('Creature')&&card(c.name).v<=x;
+    const opts=[...game.library.filter(f),...game.gy.filter(f)];const ids=await choose(`Kreatur mit MW ≤ ${x} (Bibliothek/Friedhof)`,opts.map(o=>({id:o.id,label:o.name+(game.gy.includes(o)?' (Friedhof)':''),img:imgOf(o.name)})),{max:1});
+    const c=opts.find(o=>o.id===ids[0]);const fromLib=c&&game.library.includes(c);if(c)await putOnBf([c]);if(fromLib)shuffle(game.library);if(x>=10)logm(`Finale: Kreaturen +${x}/+${x} und Eile`)},
+  'Worldly Tutor':()=>searchLib({title:'Worldly Tutor: Kreatur nach oben',filter:c=>card(c.name).k.includes('Creature'),dest:'top'}),
+  'Gamble':async()=>{await searchLib({title:'Gamble: beliebige Karte',filter:()=>true,dest:'hand'});if(game.hand.length){const c=game.hand[Math.floor(Math.random()*game.hand.length)];detach(c);game.gy.push(c);logm(`Gamble: ${c.name} zufällig abgeworfen`)}},
+  'Seasons Past':async()=>{const ids=await choose('Seasons Past: Karten mit unterschiedlichem MW',game.gy.map(o=>({id:o.id,label:`${o.name} (MW ${card(o.name).v})`,img:imgOf(o.name)})),{max:99});for(const id of ids){const c=game.gy.find(x=>x.id===id);detach(c);game.hand.push(c)}logm(`Seasons Past: ${ids.length} Karten zurück`)},
+};
+const ETB={
+  'Lumra, Bellow of the Woods':async()=>{mill(4,'Lumra');const ls=game.gy.filter(anyLand);logm(`Lumra: ${ls.length} Länder zurück`);await putOnBf(ls,{tapped:true})},
+  'Aftermath Analyst':async()=>mill(3,'Aftermath Analyst'),
+  'Gruul Turf':async c=>{const opts=landsOnBf();const ids=await choose('Gruul Turf: ein Land auf die Hand',opts.map(o=>({id:o.id,label:cd(o).n,img:instImg(o)})),{max:1,min:1});const l=game.bf.find(x=>x.id===ids[0]);if(l){detach(l);if(!l.token){l.copyOf=null;game.hand.push(l)}logm(`Gruul Turf: ${l.name} auf die Hand`)}},
+  'Lotus Field':async c=>{const opts=landsOnBf().filter(x=>x!==c);const ids=await choose('Lotus Field: 2 Länder opfern',opts.map(o=>({id:o.id,label:cd(o).n,img:instImg(o)})),{max:2,min:Math.min(2,opts.length)});for(const id of ids){const l=game.bf.find(x=>x.id===id);detach(l);if(!l.token)game.gy.push(l)}},
+  'Glacial Chasm':async()=>{await sacLands(1,{title:'Glacial Chasm: ein Land opfern'})},
+  'Pia, Aether Ascetic':async()=>{const ids=await choose('Pia: eine Karte abwerfen? (für Verzauberung)',game.hand.map(o=>({id:o.id,label:o.name,img:imgOf(o.name)})),{max:1});if(ids.length){const c=game.hand.find(x=>x.id===ids[0]);detach(c);game.gy.push(c);await searchLib({title:'Pia: Verzauberung suchen',filter:c=>card(c.name).k.includes('Enchantment'),dest:'hand'})}},
+  'Spelunking':async()=>{drawN(1);const ids=await choose('Spelunking: Land aus der Hand ins Spiel?',game.hand.filter(anyLand).map(o=>({id:o.id,label:o.name,img:imgOf(o.name)})),{max:1});const c=game.hand.find(x=>x.id===ids[0]);if(c)await putOnBf([c])},
+  'Commercial District':async()=>{const t=game.library[0];if(!t)return;const ids=await choose('Surveil 1: oberste Karte in den Friedhof?',[{id:t.id,label:t.name,img:imgOf(t.name)}],{max:1});if(ids.length){detach(t);game.gy.push(t);logm(`Surveil: ${t.name} in den Friedhof`)}},
+};
+const FETCH={'Arid Mesa':['Mountain','Plains'],'Bloodstained Mire':['Swamp','Mountain'],'Misty Rainforest':['Forest','Island'],'Scalding Tarn':['Island','Mountain'],'Verdant Catacombs':['Swamp','Forest'],'Windswept Heath':['Forest','Plains'],'Wooded Foothills':['Mountain','Forest'],'Prismatic Vista':'basic','Fabled Passage':'basic','Evolving Wilds':'basic'};
+function sacSelf(c){detach(c);if(!c.token){c.tapped=false;c.copyOf=null;game.gy.push(c)}}
+function abilities(c){
+  const n=bname(c),out=[];
+  const noLife=n==='Fabled Passage'||n==='Evolving Wilds';
+  if(FETCH[n])out.push({l:noLife?'Opfern: Standardland suchen':'1 Leben, opfern: Land suchen',run:async()=>{sacSelf(c);if(!noLife)game.life--;
+    const f=FETCH[n]==='basic'?basicLand:typeLand(FETCH[n]);const tp=noLife;const ch=await searchLib({title:`${n}: Land suchen`,filter:f,tapped:tp});
+    if(tp&&landsOnBf().length>=4)for(const x of ch)x.tapped=false}});
+  if(n==="Urza's Cave")out.push({l:'{3}, opfern: beliebiges Land suchen',run:async()=>{sacSelf(c);await searchLib({title:"Urza's Cave: Land suchen",filter:anyLand,tapped:true})}});
+  if(n==='Zuran Orb')out.push({l:'Land opfern: +2 Leben',run:async()=>{if(await sacLands(1)){game.life+=2}}});
+  if(n==='Sylvan Safekeeper')out.push({l:'Land opfern: Kreatur Fluchsicherheit',run:()=>sacLands(1)});
+  if(n==='Aftermath Analyst')out.push({l:'{3}{G}, opfern: alle Länder aus dem Friedhof',run:async()=>{sacSelf(c);await putOnBf(game.gy.filter(anyLand),{tapped:true})}});
+  if(n==='Strip Mine')out.push({l:'Opfern: Land eines Gegners zerstören',run:()=>{sacSelf(c);logm('Strip Mine: gegnerisches Land zerstört')}});
+  if(n==='Mina and Denn, Wildborn')out.push({l:'{R}{G}: Land zurück auf die Hand',run:async()=>{const ids=await choose('Land auf die Hand',landsOnBf().map(o=>({id:o.id,label:cd(o).n,img:instImg(o)})),{max:1,min:1});const l=game.bf.find(x=>x.id===ids[0]);if(l){detach(l);if(!l.token){l.copyOf=null;game.hand.push(l)}}}});
+  if(c.treasure)out.push({l:'Opfern: +1 Mana',run:()=>{detach(c);game.pool++}});
+  if(c.lander)out.push({l:'{2}, opfern: Standardland suchen',run:async()=>{detach(c);await searchLib({title:'Lander: Standardland',filter:basicLand,tapped:true})}});
+  const fx=fxOf(n);
+  if(fx&&fx.act)fx.act.forEach(a=>{const I=a.if||{};if(I.level&&(c.level||1)!==I.level)return;if(I.front&&c.tf)return;if(I.back&&!c.tf)return;
+    out.push({l:a.l,run:async()=>{if(!await payCost(c,a.cost||{}))return;await runActions(a.do,{src:c,ctx:{}});await resolveQueue()}})});
+  const eq=fx&&fx.static&&fx.static.equip;
+  if(eq)out.push({l:`Ausrüsten ${eq}`,run:async()=>{const list=game.bf.filter(isCreatureInst);const ids=await choose('Ausrüsten: welche Kreatur?',list.map(o=>({id:o.id,label:cd(o).n,img:instImg(o)})),{max:1});if(ids.length){c.attachedTo=ids[0];logm(`${c.name} → ${cd(game.bf.find(x=>x.id===ids[0])).n}`)}}});
+  return out;
+}
+async function payCost(c,k){
+  if(k.tap){if(c.tapped){logm(`${cd(c).n} ist schon getappt`);return false}c.tapped=true}
+  if(k.life)game.life-=k.life;
+  if(k.sac_creature){const list=game.bf.filter(isCreatureInst);const ids=await choose('Welche Kreatur opfern?',list.map(o=>({id:o.id,label:cd(o).n,img:instImg(o)})),{max:1,min:1});const x=game.bf.find(o=>o.id===ids[0]);if(!x)return false;killCreature(x);logm(`${cd(x).n} geopfert`)}
+  if(k.sac)sacSelf(c);
+  return true;
+}
+async function cast(c){
+  closeSheet();const d=cd(c);const from=detach(c);
+  if(from==='cmd'){game.tax[c.name]=(game.tax[c.name]||0)+1}
+  if(d.k.includes('Instant')||d.k.includes('Sorcery')){
+    logm(`Wirkt ${d.n}`);const h=SPELL[c.name];
+    const fx=fxOf(c.name);
+    if(h)await h(c);else if(fx&&fx.spell)await runActions(fx.spell,{src:c,ctx:{}});else logm(`(${d.n}: Effekt bitte manuell ausführen)`);
+    if(c.fb){c.fb=false;game.ex.push(c);logm(`${c.name} exiliert (Rückblende)`)}else if(c.name==="Green Sun's Zenith"){game.library.push(c);shuffle(game.library)}else if(c.name==='Seasons Past')game.library.push(c);else game.gy.push(c);
+    await resolveQueue();renderGame();
+  }else{logm(`Wirkt ${d.n}`);await putOnBf([c])}
+}
+async function playLand(c){
+  closeSheet();game.landsPlayed++;
+  if(game.landsPlayed>landDrops())logm(`⚠ Mehr Länder als erlaubt (${landDrops()})`);
+  logm(`Landdrop ${game.landsPlayed}/${landDrops()}: ${c.name}`);await putOnBf([c]);
+}
+async function attack(){
+  if(has('Glacial Chasm')){logm('Glacial Chasm: deine Kreaturen können nicht angreifen');renderGame();return}
+  emit('combat_start');await resolveQueue();renderGame();
+  const hasteAll=game.gy.some(x=>{const s=(fxOf(x.name)||{}).static||{};return s.haste_from_gy&&landsOnBf().some(l=>new RegExp(s.haste_from_gy).test(landTypes(l)))});
+  const canAtk=c=>isCreatureInst(c)&&!c.tapped&&power(c)>0&&(c.entered===undefined||c.entered<game.turn||hasteAll||c.haste===game.turn||/\bHaste\b/.test((cd(c).o||'').split('\n')[0])||game.bf.some(e=>e.attachedTo===c.id&&fxStatic(e,'grants')==='haste'));
+  const ready=game.bf.filter(canAtk);
+  if(!ready.length){logm('Keine angriffsbereite Kreatur (neu im Spiel = Einsatzverzögerung)');renderGame();return}
+  const ids=await choose('Angreifer wählen',ready.map(o=>({id:o.id,label:`${cd(o).n} (${power(o)})`,img:instImg(o)})),{max:99,pre:true,note:`Ziel: ${focusOpp()?.name||'–'} (Ziel oben antippen zum Wechseln). ${focusOpp()&&focusOpp().peer?'Online: Schaden geht direkt durch – geblockten Schaden korrigiert ihr mit +/−.':'Keine Blocker simuliert.'}`});
+  if(!ids.length)return renderGame();
+  const attackers=ids.map(id=>game.bf.find(x=>x.id===id)).filter(Boolean);
+  for(const c of attackers)if(!/Vigilance/i.test(cd(c).o||''))c.tapped=true;
+  const ctx={attackers};
+  emit('attack',ctx);emit('attack_any',ctx);await resolveQueue();
+  for(const h of onBf('Horizon Explorer')){mkToken('Lander',{k:['Artifact'],p:'',lander:true,t:'Token Artefakt — Lander'});logm('Horizon Explorer: Lander-Token')}
+  const o=focusOpp();let total=0,vill=false;const hits=[],lifeBefore=o?o.life:0;
+  for(const c of ctx.attackers){if(!game.bf.includes(c)||!o||o.life<=0)continue;const p=power(c);if(p<=0)continue;
+    loseOpp(o,p);total+=p;hits.push({n:bname(c),img:instImg(c),p,col:figCol(cd(c).f)});if(fxStatic(c,'lifelink')||anyStatic('lifelink_all'))game.life+=p;
+    emit('combat_damage',{c,amount:p});emit('combat_damage_attached',{c,amount:p});if(isVillain(c))vill=true}
+  if(hits.length){if(o.peer)net.atk={i:Date.now()%1e9,to:o.peer,c:hits.slice(0,8).map(x=>nstr(x.n,44)),p:hits.slice(0,8).map(x=>x.p),a:total};renderGame();await animateCombat(hits,{name:o.name,from:lifeBefore,to:lifeBefore-total})}
+  logm(`⚔ ${ctx.attackers.length} Angreifer: ${total} Kampfschaden an ${o?o.name:'–'}`);
+  if(vill)emit('villain_combat_damage',{});
+  await resolveQueue();renderGame();
+}
+function manaAvail(){let m=game.pool;for(const c of game.bf){if(c.tapped)continue;const n=bname(c);
+  if(n==='Sol Ring')m+=2;else if(n==='Lotus Field')m+=3;else if(n==='Gruul Turf')m+=2;else if(isLandInst(c)&&!c.landTok&&!isCreatureInst(c))m++;else if(n==='Arcane Signet'||c.treasure)m++;else if(isLandInst(c)&&isCreatureInst(c)&&c.entered<game.turn)m++}return m}
+
+/* --- Auswahl-Dialoge --- */
+let pending=null;
+function choose(title,items,{min=0,max=1,note='',pre=false}={}){
+  return new Promise(res=>{
+    if(pending)pending.res([]);
+    pending={kind:'choose',res,sel:new Set(pre?items.map(i=>i.id):[]),min:Math.min(min,items.length),max,items};
+    $('#sheet').innerHTML=`<h2 style="padding-right:30px">${esc(title)}</h2>${note?`<p class="mute small" style="margin:4px 0">${esc(note)}</p>`:''}
+     <div class="chgrid">${items.map(it=>`<div class="chi ${pending.sel.has(it.id)?'on':''}" data-ch="${it.id}">${it.img?`<img src="${it.img}" loading="lazy" alt="">`:''}<span>${esc(it.label)}</span></div>`).join('')||'<p class="mute">Keine passenden Karten.</p>'}</div>
+     <div class="acts"><button class="btn pri" data-chok>Bestätigen <span id="chN"></span></button><button class="btn" data-chno>${pending.min>0?'Abbrechen':'Keine'}</button></div>`;
+    $('#ov').classList.add('on');updCh();
+  });
+}
+function updCh(){const n=$('#chN');if(n&&pending)n.textContent=`(${pending.sel.size}${pending.max<99?'/'+pending.max:''})`}
+function askNumber(title,def){return new Promise(res=>{if(pending)pending.res([]);pending={kind:'num',res};
+  $('#sheet').innerHTML=`<h2>${esc(title)}</h2><input type="number" id="numIn" value="${def}" min="0" style="width:100%;font-size:20px;margin-top:10px"><div class="acts"><button class="btn pri" data-numok>OK</button><button class="btn" data-chno>Abbrechen</button></div>`;
+  $('#ov').classList.add('on');setTimeout(()=>{const i=$('#numIn');if(i){i.focus();i.select()}},50)})}
+function finishPending(val){const p=pending;pending=null;$('#ov').classList.remove('on');if(p)p.res(val)}
+
+/* --- Darstellung --- */
+function instImg(c){if(c.flip)return '';if(c.tf&&card(c.name).imgb)return sfImg(card(c.name).img,'small','back');if(c.token)return c.copyImg?imgOf(c.name):'';return imgOf(c.name)}
+function mcHTML(c,zone){
+  const d=cd(c);const col=d.f.length>1?'cM':d.f.length===1?'c'+d.f[0]:(d.k.includes('Land')&&d.m.length===1&&d.m[0]!=='C'?'c'+d.m[0]:'');
+  const land=zone==='lands';
+  const sick=zone==='bf'&&isCreatureInst(c)&&c.entered===game.turn&&game.phase==='play';
+  let badge='';
+  if(zone==='bf'||zone==='lands'){const pw=isCreatureInst(c)?power(c):null;
+    if(c.copyOf)badge=`= ${c.copyOf.split(',')[0]}`;else if(pw!==null&&(bname(c)==='Lumra, Bellow of the Woods'||bname(c)==='Ashaya, Soul of the Wild'))badge=`${pw}/${pw}`;
+    else if(pw!==null&&(c.ctr||fxStatic(c,'power_hand')||(isVillain(c)&&game.bf.some(s=>s!==c&&fxStatic(s,'other_villains_pt')))))badge=`${pw}/${toughness(c)}`;
+    if(c.level)badge+=(badge?' · ':'')+'Stufe '+c.level;if(c.plan)badge+=(badge?' · ':'')+'Plan '+c.plan;if(c.attachedTo){const t=game.bf.find(x=>x.id===c.attachedTo);if(t)badge+=(badge?' · ':'')+'→ '+cd(t).n.split(',')[0]}
+    if(sick)badge+=(badge?' · ':'')+'neu';}
+  const bd=badge?`<span class="bd">${esc(badge)}</span>`:'';
+  const im=instImg(c);
+  const isCre=zone==='bf'&&isCreatureInst(c)&&!c.landTok;const fig=FIG&&isCre&&liveN<24,live=!FIG&&isCre&&liveN<14;if(isCre)liveN++;
+  const trig=c.glowT&&Date.now()-c.glowT<900,born=c.bornT&&Date.now()-c.bornT<1100;
+  const fh=fig?figHTML(im,d.n,born):'';const stl=(fig||live)?`style="${liveVars(c.id)}${fig?';--fc:'+figCol(d.f):''}"`:'';
+  if(im)return `<div class="mc im ${c.tapped?'tapped':''} ${land?'land':''} ${live?'live':''} ${fig?'fig3d':''} ${trig?'trig':''}" ${stl} data-id="${c.id}" data-zone="${zone}">${fh}<img loading="lazy" src="${im}" alt="${esc(d.n)}">${live?artHTML(im):''}${bd}</div>`;
+  return `<div class="mc ${col} ${c.tapped?'tapped':''} ${land?'land':''} ${c.token?'token':''} ${fig?'fig3d':''} ${trig?'trig':''}" ${stl} data-id="${c.id}" data-zone="${zone}">${fh}
+    <div class="nm">${esc(d.n)}</div>${d.c?`<div class="cs">${pips(d.c)}</div>`:''}
+    <div class="tl">${esc(d.t)}</div>${land?'':`<div class="tx">${esc(d.s)}</div>`}${(c.p||d.p)&&!land?`<div class="pt">${esc(c.p||d.p)}</div>`:''}${bd}</div>`;
+}
+function renderGame(){
+  liveN=0;
+  if(!deck)return;
+  if(!game)newGame(true);
+  const g=game;
+  $('#opps').innerHTML=`<div class="opps">${g.opps.map((o,i)=>`<div class="opp ${i===g.focus?'focus':''} ${o.life<=0?'dead':''}" data-opp="${i}"><div class="small mute">${i===g.focus?'🎯 ':''}${esc(o.name)}</div><b>${o.life}</b>${o.peer?`<div class="small mute">✋${nnum(o.pres.hand)} 📚${nnum(o.pres.lib)}</div><button class="ob" style="width:auto;padding:0 8px;margin-top:3px" data-view="${esc(o.peer)}">Board</button>`:''}<div class="row" style="justify-content:center;gap:4px;margin-top:2px"><button class="ob" data-ol="${i}|-1">−</button><button class="ob" data-ol="${i}|1">+</button></div></div>`).join('')}</div>
+    <div class="row small mute" style="margin:-4px 0 10px;gap:10px"><span>Schaden gesamt: <b style="color:var(--text)">${g.dmg}</b></span>${ojerPow()?`<span class="tag bad">Ojer aktiv: rote Pings = ${ojerPow()}</span>`:''}${(onBf('Ancient Greenwarden').length+onBf('Traveling Chocobo').length)?`<span class="tag gold">Landfall ×${1+onBf('Ancient Greenwarden').length+onBf('Traveling Chocobo').length}</span>`:''}
+    <select id="nOpp" style="margin-left:auto;padding:4px 6px;font-size:12px;${g.opps.some(o=>o.peer)?'display:none':''}">${[1,2,3,4].map(n=>`<option value="${n}" ${n===g.nOpp?'selected':''}>${n} Gegner</option>`).join('')}</select></div>`;
+  $('#gbar').innerHTML=`<div class="life"><button data-life="-1">−</button><b id="lifeV">${g.life}</b><button data-life="1">+</button></div>
+    <div class="chip">Zug <b>${g.turn||'–'}</b></div><div class="chip">Landdrops <b>${g.landsPlayed}/${landDrops()}</b></div><div class="chip">Mana ≈ <b>${manaAvail()}</b></div>${g.pool?`<div class="chip" data-pool style="cursor:pointer">Pool <b>${g.pool}</b> −</div>`:''}<div class="chip">Bibl. <b>${g.library.length}</b></div><label class="chip" style="cursor:pointer"><input type="checkbox" id="autoT" ${g.auto?'checked':''} style="vertical-align:-2px"> Auto-Entscheidungen</label><label class="chip" style="cursor:pointer"><input type="checkbox" id="figT" ${FIG?'checked':''} style="vertical-align:-2px"> Figuren</label>
+    <select id="playDraw" style="margin-left:auto"><option value="1" ${g.onPlay?'selected':''}>Ich beginne</option><option value="0" ${!g.onPlay?'selected':''}>Ich ziehe zuerst</option></select>`;
+  let ban='';
+  if(g.won)ban+=`<div class="banner">🏆 Alle Gegner besiegt in Zug ${g.won} – ${g.dmg} Schaden insgesamt.</div>`;
+  if(g.phase==='mull')ban+=`<div class="banner">Starthand: behalten oder Mulligan?${fmt()==='commander'?' (erster Mulligan ist frei)':''}</div>`;
+  if(g.phase==='bottom')ban+=`<div class="banner">Tippe auf ${g.bottom} Karte${g.bottom>1?'n':''}, die unter die Bibliothek ${g.bottom>1?'kommen':'kommt'}.</div>`;
+  $('#gbanner').innerHTML=ban;
+  let act='';
+  if(g.phase==='mull')act=`<button class="btn pri" data-a="keep">Behalten</button><button class="btn" data-a="mull">Mulligan</button><button class="btn ai" data-a="evalhand">✦ Hand bewerten</button>`;
+  else if(g.phase==='play')act=`<button class="btn" data-a="attack">⚔ Kampf</button><button class="btn pri" data-a="next" ${netTurnMode()&&!netMyTurn()?'disabled':''}>${netTurnMode()?(netMyTurn()?'Zug beenden & weitergeben ▸':'Gegner am Zug…'):'Zug beenden ▸'}</button><button class="btn" data-a="draw">+1 Ziehen</button><button class="btn" data-a="lib">Bibliothek…</button><button class="btn" data-a="token">+ Token</button><button class="btn ai" data-a="tipp">✦ Was soll ich spielen?</button>`;
+  act+=`<button class="btn sm" data-a="restart" style="margin-left:auto">Neues Spiel</button>`;
+  $('#gactions').innerHTML=act;
+  $('#tipBox').innerHTML=g.tip?`<div class="tip">${g.tip}</div>`:'';
+  const top=g.library[0];
+  $('#topBox').innerHTML=(g.phase==='play'&&top&&topPlay())?`<div class="zone"><div class="zh"><span>Oberste Karte (offen)</span></div><div class="cards">${mcHTML(top,'top')}</div></div>`:'';
+  $('#hc').textContent=g.hand.length;
+  $('#handHint').textContent=g.phase==='play'?`Landdrops ${g.landsPlayed}/${landDrops()}`:'';
+  $('#z-hand').innerHTML=g.hand.map(c=>mcHTML(c,'hand')).join('')||'<span class="mute small">leer</span>';
+  const isL=c=>cd(c).k.includes('Land')&&!isCreatureInst(c);
+  const lands=g.bf.filter(isL),perms=g.bf.filter(c=>!isL(c));
+  $('#z-bf').classList.toggle('figs',FIG&&perms.some(isCreatureInst));
+  $('#z-bf').innerHTML=perms.map(c=>mcHTML(c,'bf')).join('')||'<span class="mute small">leer</span>';
+  $('#z-lands').innerHTML=lands.map(c=>mcHTML(c,'lands')).join('')||'<span class="mute small">keine</span>';
+  $('#cmdZone').style.display=deck.commander.length?'':'none';
+  $('#z-cmd').innerHTML=g.cmd.map(c=>mcHTML(c,'cmd')).join('')||'<span class="mute small">leer</span>';
+  $('#taxInfo').textContent=Object.entries(g.tax).filter(([,v])=>v).map(([n,v])=>`Steuer ${n.split(',')[0]}: +${v*2}`).join(' · ');
+  $('#manaInfo').textContent=`${perms.length} Karten · ${landsOnBf().length} Länder`;
+  $('#gc').textContent=g.gy.length;$('#ec').textContent=g.ex.length;
+  $('#z-gy').innerHTML=g.gy.map(c=>`<span data-id="${c.id}" data-zone="gy">🪦 ${esc(c.name)}</span>`).join('')||'<span class="mute small" style="background:none">Friedhof leer</span>';
+  $('#z-ex').innerHTML=g.ex.map(c=>`<span data-id="${c.id}" data-zone="ex" ${c.vx?'style="outline:1px solid var(--gold)"':''}>${c.vx?'🔥':'✧'} ${esc(c.name)}</span>`).join('');
+  $('#log').innerHTML=g.log.map(esc).join('<br>');
+  pushState();
+}
+function sheet(html){net.view=null;if(pending)finishPending([]);$('#sheet').innerHTML='<button class="x" data-close>×</button>'+html;$('#ov').classList.add('on')}
+function closeSheet(){net.view=null;if(pending){finishPending([]);return}$('#ov').classList.remove('on')}
+function cardDetailHTML(name){
+  const d=card(name);
+  const a=analysis;let v='';
+  if(a){const s=(a.starke_karten||[]).find(x=>(x.name||'').toLowerCase()===name.toLowerCase());const w=(a.schwache_karten||[]).find(x=>(x.name||'').toLowerCase()===name.toLowerCase());
+    if(s)v=`<div class="item"><span class="tag good">stark</span> ${esc(s.warum)}</div>`;if(w)v=`<div class="item"><span class="tag bad">schwach</span> ${esc(w.warum)}${w.ersatz?`<br>→ <b>Besser:</b> ${esc(w.ersatz)}`:''}</div>`}
+  const big=imgOf(name,true);
+  return `${big?(d.k.includes('Creature')?`<div class="bigwrap live"><img class="big" src="${big}" alt="${esc(name)}">${artHTML(big)}</div>`:`<img class="big" src="${big}" alt="${esc(name)}">`):''}<h2 style="padding-right:30px">${esc(name)}</h2><div>${pips(d.c)}</div><div class="mute small" style="margin:6px 0">${esc(d.t)}${d.p?' · '+esc(d.p):''}${d.missing?'':' · MW '+d.v}</div>
+   <p style="margin:8px 0;white-space:pre-wrap">${esc(d.s||d.o||(d.missing?'Keine Kartendaten geladen.':''))}</p>${d.o&&d.s?`<details class="small"><summary class="mute" style="cursor:pointer">Originaltext (Oracle)</summary><p style="white-space:pre-wrap;margin:6px 0">${esc(d.o)}</p></details>`:''}
+   <div class="row" style="gap:5px">${d.r.map(r=>`<span class="tag gold">${ROLE_DE[r]||r}</span>`).join('')}</div>${v}
+   <h3>Automatische Regeln</h3>${HARD.has(name)&&!fxOf(name)?'<p class="small mute">Fest eingebaut (Landfall-/Ramp-Logik).</p>':fxText(fxOf(name))}<button class="btn sm" data-rules="${esc(name)}">Regeln ansehen/bearbeiten</button>
+   <p class="small" style="margin:10px 0 0"><a href="https://scryfall.com/search?q=${encodeURIComponent('!"'+name+'"')}" target="_blank" rel="noopener">Auf Scryfall ansehen ↗</a> · <a href="#" data-edit="${esc(name)}">${d.missing?'<b>Daten eintragen</b>':'Daten bearbeiten'}</a></p>`;
+}
+let ABL={};
+function cardSheet(id,zone){
+  const f=zone==='top'?{z:'library',c:game.library[0]}:findCard(id);if(!f||!f.c)return;const c=f.c;
+  if(game.phase==='bottom'&&f.z==='hand'){move(id,'libbot');game.bottom--;if(game.bottom<=0)startTurns();renderGame();return}
+  const B=(a,l,cls='')=>`<button class="btn ${cls}" data-mv="${a}" data-id="${c.id}">${l}</button>`;
+  const P=(k,l,cls='pri')=>`<button class="btn ${cls}" data-do="${k}" data-id="${c.id}">${l}</button>`;
+  const play=game.phase==='play';const L=isLandName(c.name)&&!c.token&&!c.flip;
+  let acts='';
+  const st=(fxOf(c.name)||{}).static||{};const cyc=st.cycling||((card(c.name).o||'').match(/Cycling (\{[^ ]+)/)||[])[1];
+  if(f.z==='hand'){acts=(play?(L?P('land','Als Land spielen'):P('cast','Wirken (mit Effekt)')):'')+(cyc&&play?P('cycle',`Umwandeln ${cyc}`,''):'')+(c.name==='Boseiju, Who Endures'&&play?P('channel','Channel: zerstören','') :'')+(play?P('discard','Abwerfen',''):B('gy','Abwerfen'))+B('ex','Exilieren')+B('libtop','Oben auf Bibliothek')+B('libbot','Unter Bibliothek')}
+  if(f.z==='library')acts=L?P('land','Land von oben spielen'):(c.name&&/Bird/.test(card(c.name).t)?P('cast','Wirken'):'<p class="mute small">Nur Länder (und Vögel mit Chocobo) können von oben gespielt werden.</p>');
+  if(f.z==='bf'){ABL[c.id]=abilities(c);acts=ABL[c.id].map((a,i)=>`<button class="btn pri" data-ab="${c.id}|${i}">${esc(a.l)}</button>`).join('')+`<button class="btn" data-tap="${c.id}">${c.tapped?'Enttappen':'Tappen'}</button>`+(c.token?B('gy','Token entfernen'):B('gy','Friedhof / opfern')+B('hand','Zurück auf Hand')+B('ex','Exilieren')+B('libtop','Oben auf Bibliothek'))}
+  const mayhem=play&&c.discT===game.turn&&(st.mayhem||st.mayhem_land||(!L&&game.bf.some(s=>s.name==='Norman Osborn'&&s.tf)));
+  if(f.z==='gy')acts=(mayhem?P('mayhem',`Mayhem: ${L?'spielen':'wirken'}${st.mayhem?' '+st.mayhem:''}`):'')+(play&&st.flashback?P('flashback',`Rückblende ${st.flashback}`):'')+(play&&L&&gyPlay()?P('land','Als Land spielen (Friedhof)'):'')+B('hand','Auf die Hand')+B('bf','Aufs Schlachtfeld')+B('ex','Exilieren')+B('libbot','Unter Bibliothek');
+  if(f.z==='ex')acts=(c.vx&&play?(L?P('land','Als Land spielen'):P('cast','Wirken')):'')+B('hand','Auf die Hand')+B('bf','Aufs Schlachtfeld')+B('gy','Friedhof');
+  if(f.z==='cmd')acts=P('cast',`Wirken${game.tax[c.name]?` (+${game.tax[c.name]*2} Steuer)`:''}`);
+  if(c.commander&&f.z!=='cmd')acts+=B('cmd','In Kommandozone');
+  const head=c.token?`<h2>${esc(cd(c).n)}</h2><p class="mute small">${esc(cd(c).t)}${cd(c).p?' · '+esc(cd(c).p):''}</p>`:c.flip?`<h2>Temple of Power</h2><p class="mute small">Rückseite von Ojer Axonil – Land, tappt für {R}.</p>`:cardDetailHTML(c.copyOf||c.name);
+  sheet(head+`<div class="acts">${acts}</div>`);
+}
+function libSheet(){
+  sheet(`<h2>Bibliothek (${game.library.length})</h2><div class="acts">
+   <button class="btn" data-l="look3">Oberste 3 ansehen</button><button class="btn" data-l="search">Durchsuchen</button>
+   <button class="btn" data-l="shuffle">Mischen</button><button class="btn" data-l="mill">1 Karte millen</button></div><div id="libView" style="margin-top:12px"></div>`);
+}
+function libView(mode){
+  const v=$('#libView');if(!v)return;
+  const list=mode==='look3'?game.library.slice(0,3):[...game.library].sort((a,b)=>a.name.localeCompare(b.name));
+  const B=(id,a,l)=>`<button class="btn sm" data-mv="${a}" data-id="${id}" data-keep="1">${l}</button>`;
+  v.innerHTML=(mode==='look3'?'<p class="mute small">Oben → unten. Nicht verschobene Karten bleiben oben.</p>':'<p class="mute small">Nach dem Suchen ggf. „Mischen“ tippen.</p>')+
+   list.map(c=>`<div class="libl"><span class="n">${esc(c.name)}</span>${B(c.id,'hand','Hand')}${B(c.id,'bf','Feld')}${mode==='look3'?B(c.id,'libbot','Unten')+B(c.id,'gy','Friedhof'):''}</div>`).join('')||'<p class="mute">leer</p>';
+  v.dataset.mode=mode;
+}
+function gameState(){
+  const nm=c=>{const d=cd(c);return `${d.n}${d.c?' '+d.c:''} [${d.t}]${c.tapped?' (getappt)':''}`};
+  return `Format: ${fmt()==='commander'?'Commander':'60-Karten'}${deck.commander.length?`, Commander: ${deck.commander.map(x=>x.name).join(' + ')} (${game.cmd.length?'in Kommandozone':'nicht in Kommandozone'}${Object.keys(game.tax).length?', bereits '+Object.values(game.tax).reduce((a,b)=>a+b,0)+'× gewirkt':''})`:''}
+Zug: ${game.turn||'Starthand'} · ${game.onPlay?'Ich habe begonnen':'Ich bin nicht am Zug gestartet'} · Mein Leben ${game.life} · Gegner: ${game.opps.map(o=>o.name+' '+o.life).join(', ')} · Bibliothek ${game.library.length} · Landdrops ${game.landsPlayed}/${landDrops()} · Mana-Pool ${game.pool}
+HAND: ${game.hand.map(nm).join('; ')||'leer'}
+SCHLACHTFELD: ${game.bf.map(nm).join('; ')||'leer'}
+FRIEDHOF: ${game.gy.map(c=>c.name).join('; ')||'leer'}
+${analysis?`Deck-Archetyp: ${analysis.archetyp}. Spielplan: früh ${analysis.spielplan?.frueh||''}; mitte ${analysis.spielplan?.mitte||''}`:''}`;
+}
+async function aiTip(kind){
+  const btn=document.querySelector(`[data-a="${kind}"]`);if(btn)btn.disabled=true;
+  game.tip='<span class="spin"></span> Claude denkt nach…';$('#tipBox').innerHTML=`<div class="tip">${game.tip}</div>`;
+  const prompt=kind==='evalhand'?
+`Du bist ein Magic: The Gathering Coach. Bewerte diese Starthand (Mulligan Nr. ${game.mulls}${fmt()==='commander'?', erster Mulligan frei':''}). Antworte auf Deutsch, max. 90 Wörter: erste Zeile „BEHALTEN“ oder „MULLIGAN“ + Begründung, dann der Plan für die ersten 3 Züge.
+Deckliste zur Einordnung:\n${deck.commander.map(x=>x.name).join(', ')}\n${deck.main.map(e=>e.qty+' '+e.name).join(', ')}\n\n${gameState()}`:
+`Du bist ein Magic: The Gathering Coach und hilfst beim Solo-Testen (Gegner ohne eigene Aktionen). Was ist in diesem Zug die beste Spielweise? Antworte auf Deutsch, max. 110 Wörter: konkrete Reihenfolge (Land, Zauber, Fähigkeiten, Angriffe), kurz begründet, plus worauf ich die nächsten Züge hinarbeiten sollte.
+Deckliste zur Einordnung:\n${deck.commander.map(x=>x.name).join(', ')}\n${deck.main.map(e=>e.qty+' '+e.name).join(', ')}\n\n${gameState()}`;
+  try{const t=await ask(prompt,{modelTier:'default',cache:false,onText:({text})=>{if(text&&text!=='Thinking...'){game.tip=fmtTip(text);$('#tipBox').innerHTML=`<div class="tip">${game.tip}</div>`}}});game.tip=fmtTip(t)}
+  catch(e){game.tip=esc(aiErr(e))}
+  renderGame();
+}
+function fmtTip(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^#+\s*/gm,'')}
+
+/* ---------- Animationen ---------- */
+let liveN=0;
+let FIG=lsGet('mtg_fig',true);
+const figCol=f=>(f&&f.length>1)?'#f0c75e':({W:'#fff3c4',U:'#4aa3ff',B:'#b07cf0',R:'#ff6a3d',G:'#4fd17a'})[(f||[])[0]]||'#cfd3da';
+const figHTML=(im,name,born)=>`<div class="fig ${born?'born':''}"><div class="figart">${im?`<img src="${im}" alt="">`:`<span>${esc(String(name||'?')[0])}</span>`}</div><i class="base"></i></div>`;
+function impactFX(st,tgt,col){
+  const mk=(c)=>{const e=document.createElement('div');e.className=c;e.style.setProperty('--fc',col);return e};
+  const s=mk('shock');tgt.appendChild(s);s.animate([{transform:'scale(.2)',opacity:1},{transform:'scale(4.2)',opacity:0}],{duration:520,easing:'ease-out'}).onfinish=()=>s.remove();
+  const l=mk('slash');const ang=-35+Math.random()*70;tgt.appendChild(l);l.animate([{transform:`rotate(${ang}deg) scaleX(0)`,opacity:1},{transform:`rotate(${ang}deg) scaleX(1)`,opacity:1,offset:.35},{transform:`rotate(${ang}deg) scaleX(1.1)`,opacity:0}],{duration:360}).onfinish=()=>l.remove();
+  const f=mk('sflash');st.appendChild(f);f.animate([{opacity:.4},{opacity:0}],{duration:260}).onfinish=()=>f.remove();
+  st.animate([{transform:'translate(0,0)'},{transform:'translate(-6px,4px)'},{transform:'translate(5px,-5px)'},{transform:'translate(-3px,2px)'},{transform:'translate(0,0)'}],{duration:230});
+}
+function liveVars(id){const t=Date.now()/1000;return `--d:-${((t+id*1.7)%14).toFixed(2)}s;--d2:-${((t+id*2.3)%6.5).toFixed(2)}s`}
+const artHTML=src=>`<div class="art"><img src="${src}" alt=""></div>`;
+
+const reduceMotion=()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}};
+function animateCombat(hits,{name,from,to,incoming=false,by=''}){
+  return new Promise(res=>{
+    if(!hits.length||reduceMotion()||!document.body.animate){res();return}
+    const old=$('#stage');if(old)old.remove();
+    const shown=hits.slice(0,12),rest=hits.length-shown.length;
+    const st=document.createElement('div');st.id='stage';st.className=incoming?'in':'';
+    st.innerHTML=`<div class="tgt"><div class="small">${incoming?esc(by)+' greift dich an':'Angriff auf'}</div><div class="tn">${esc(name)}</div><div class="tl"><b id="stLife">${from}</b></div></div>
+      <div class="atk">${shown.map((h,i)=>`<div class="ac ${FIG?'hasfig':(h.img?'live':'')}" style="--fc:${h.col||'#d8b25a'}" data-i="${i}">${FIG?figHTML(h.img,h.n,false):''}${h.img?`<img src="${h.img}" alt="">${FIG?'':artHTML(h.img)}`:`<div class="at">${esc(h.n)}</div>`}<span>${h.p}</span></div>`).join('')}${rest>0?`<div class="small mute" style="align-self:center">+${rest} weitere</div>`:''}</div>
+      <div class="small mute" style="text-align:center">Tippen zum Überspringen</div>`;
+    document.body.appendChild(st);
+    let done=false,life=from;const timers=[];
+    const finish=()=>{if(done)return;done=true;timers.forEach(clearTimeout);const a=st.animate([{opacity:1},{opacity:0}],{duration:180});a.onfinish=()=>{st.remove();res()};setTimeout(()=>{st.remove();res()},260)};
+    st.addEventListener('click',finish);
+    st.animate([{opacity:0},{opacity:1}],{duration:160});
+    const gap=shown.length>6?150:shown.length>3?240:330,dir=incoming?1:-1;
+    const tgt=st.querySelector('.tgt'),lifeEl=st.querySelector('#stLife');
+    shown.forEach((h,i)=>{
+      const el=st.querySelector(`.ac[data-i="${i}"]`);
+      timers.push(setTimeout(()=>{
+        const r=el.getBoundingClientRect(),t=tgt.getBoundingClientRect();
+        const dy=(incoming?t.top-r.bottom:t.bottom-r.top)+dir*10,dx=(t.left+t.width/2)-(r.left+r.width/2);
+        el.style.zIndex=5;el.classList.add('go');const fg=el.querySelector('.fig');if(fg)fg.animate([{transform:'translateY(0) scale(1) rotate(0)'},{transform:`translateY(${dir*30}px) scale(1.9) rotate(${dx>0?14:-14}deg)`,offset:.42},{transform:'translateY(0) scale(1) rotate(0)'}],{duration:420,easing:'cubic-bezier(.5,0,.3,1)'});
+        el.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${dx*.6}px,${dy}px) scale(1.12) rotate(${dx>0?6:-6}deg)`,offset:.45},{transform:'translate(0,0) scale(1)'}],{duration:420,easing:'cubic-bezier(.5,0,.3,1)'}).onfinish=()=>{el.style.zIndex='';el.style.opacity=.55};
+        timers.push(setTimeout(()=>{
+          impactFX(st,tgt,h.col||'#fff');life-=h.p;lifeEl.textContent=life;if(life<=0)lifeEl.style.color='var(--bad)';
+          tgt.animate([{transform:'translateX(0)'},{transform:'translateX(-9px)'},{transform:'translateX(8px)'},{transform:'translateX(-5px)'},{transform:'translateX(0)'}],{duration:240});
+          tgt.animate([{boxShadow:'0 0 0 0 rgba(224,107,91,.9)'},{boxShadow:'0 0 0 18px rgba(224,107,91,0)'}],{duration:380});
+          const f=document.createElement('div');f.className='dfl';f.textContent='−'+h.p;f.style.left=(30+Math.random()*40)+'%';tgt.appendChild(f);
+          f.animate([{transform:'translateY(0)',opacity:1},{transform:`translateY(${incoming?-46:46}px)`,opacity:0}],{duration:800,easing:'ease-out'}).onfinish=()=>f.remove();
+        },190));
+      },260+i*gap));
+    });
+    timers.push(setTimeout(()=>{if(rest>0){lifeEl.textContent=to}},260+shown.length*gap+250));
+    timers.push(setTimeout(finish,260+shown.length*gap+900));
+  });
+}
+const pingQ=new Map();let pingT=null;
+function fxPing(srcName,amt,label){
+  if(reduceMotion()||!document.body.animate||amt<=0)return;
+  const k=srcName+'|'+label;pingQ.set(k,(pingQ.get(k)||0)+amt);
+  if(pingT)return;
+  pingT=setTimeout(()=>{pingT=null;
+    let box=$('#pings');if(!box){box=document.createElement('div');box.id='pings';document.body.appendChild(box)}
+    for(const [key,n] of pingQ){const [nm,lb]=key.split('|');const im=deck?imgOf(nm):'';
+      const el=document.createElement('div');el.className='ping';el.innerHTML=`${im?`<img src="${im}" alt="">`:''}<div><b>−${n}</b> ${esc(lb)}<div class="small">${esc(nm.split(',')[0])}</div></div>`;
+      box.appendChild(el);while(box.children.length>4)box.firstChild.remove();
+      el.animate([{transform:'translateX(120%)',opacity:0},{transform:'translateX(0)',opacity:1,offset:.12},{transform:'translateX(0)',opacity:1,offset:.8},{transform:'translateX(0)',opacity:0}],{duration:1900,easing:'ease-out'}).onfinish=()=>el.remove();}
+    pingQ.clear();
+    const o=$('#opps');if(o)o.animate([{filter:'brightness(1)'},{filter:'brightness(1.9) saturate(1.6)'},{filter:'brightness(1)'}],{duration:320});
+  },220);
+}
+/* ---------- Online-Tisch (room) ---------- */
+let roomCap=null,table=null;
+const net={code:lsGet('mtg_code',''),nick:lsGet('mtg_nick',''),dealt:{},seen:{},tok:null,tokDone:0,first:false,last:'',view:null,err:'',lobby:false,busy:false};
+(async()=>{try{roomCap=makeSupaRoom()}catch(e){roomCap=null}renderNet()})();
+const nstr=(v,n=40)=>String(v??'').replace(/[\u0000-\u001f]/g,' ').slice(0,n);
+const nnum=v=>{v=+v;return Number.isFinite(v)?Math.max(-9999,Math.min(9999,Math.round(v))):0};
+function netPeers(){try{return table?table.peers().filter(p=>p.kind==='viewer'&&p.presence&&p.presence.v===1):[]}catch(e){return []}}
+function netMe(){try{const p=table&&table.peers().find(p=>p.isMe&&p.sameTab);return p?p.peer:null}catch(e){return null}}
+function netOthers(){const me=netMe();return netPeers().filter(p=>p.peer!==me)}
+const pnick=p=>nstr(p.presence.nick,24)||'Spieler';
+function activeTok(){let b=null;for(const p of netPeers()){const t=p.presence.tok;if(t&&Number.isFinite(+t.s)&&(!b||+t.s>b.s||(+t.s===b.s&&String(t.h)>String(b.h))))b={s:+t.s,h:String(t.h)}}return b}
+function netHolder(){const t=activeTok();if(!t)return null;return netPeers().find(p=>p.peer===t.h)||{gone:true}}
+const netMyTurn=()=>{const t=activeTok();return !!t&&t.h===netMe()};
+const netTurnMode=()=>!!table&&!!activeTok()&&netOthers().length>0;
+function netState(){
+  const g=game,groups=new Map();
+  for(const c of g.bf){const d=cd(c);let b=isCreatureInst(c)?`${power(c)}/${toughness(c)||'?'}`:'';if(c.level)b+=' St.'+c.level;if(c.plan)b+=' Plan '+c.plan;
+    const k=d.n+'|'+b;const e=groups.get(k)||[nstr(d.n,44),0,0,nstr(b,14),isLandInst(c)&&!isCreatureInst(c)?1:0];e[1]++;if(c.tapped)e[2]++;groups.set(k,e)}
+  const st={v:1,nick:nstr(net.nick,24)||'Spieler',deck:nstr(deck.commander.map(x=>x.name).join(' + ')||'Deck',60),life:g.life,hand:g.hand.length,lib:g.library.length,turn:g.turn,ph:g.phase,
+    gyN:g.gy.length,gy:g.gy.slice(-8).map(c=>nstr(c.name,40)),cmd:g.cmd.map(c=>nstr(c.name,44)),bf:[...groups.values()],dealt:{...net.dealt},ack:{...net.seen},tok:net.tok,atk:net.atk||null,log:g.log.slice(0,4).map(l=>nstr(l,90))};
+  const size=()=>new TextEncoder().encode(JSON.stringify(st)).length;
+  if(size()>3700)st.log=[];if(size()>3700)st.gy=[];
+  while(size()>3700&&st.bf.length>5)st.bf.pop();
+  return st;
+}
+function pushState(){
+  if(!table||!game||!deck)return;
+  let st;try{st=netState()}catch(e){return}
+  const s=JSON.stringify(st);if(s===net.last)return;net.last=s;
+  table.presence(st).catch(()=>{});
+}
+function dummyOpps(){const L=fmt()==='commander'?40:20;return Array.from({length:game.nOpp||1},(_,i)=>({name:'Gegner '+(i+1),life:L}))}
+function netSync(){
+  if(!table||!game){renderNet();return}
+  const me=netMe(),others=netOthers();
+  if(me){
+    for(const p of others){const tot=nnum(p.presence.dealt&&p.presence.dealt[me]);const d=tot-(net.seen[p.peer]||0);const lb=game.life;net.atkSeen=net.atkSeen||{};
+      const a=p.presence.atk;let anim=false;if(a&&a.to===me&&a.i!==net.atkSeen[p.peer]){const first=!(p.peer in net.atkSeen);net.atkSeen[p.peer]=a.i;
+        if(!first||d>0){anim=true;const cs=Array.isArray(a.c)?a.c.slice(0,8):[],ps=Array.isArray(a.p)?a.p:[];
+          animateCombat(cs.map((n,i)=>({n:nstr(n,44),img:imgOf(nstr(n,44)),p:nnum(ps[i]),col:figCol(card(nstr(n,44)).f)})),{name:'Du',from:lb,to:lb-nnum(a.a),incoming:true,by:pnick(p)})}}
+      if(d>0&&!anim)fxPing(pnick(p),d,'du');
+      if(d){game.life-=d;logm(d>0?`💥 ${pnick(p)}: ${d} Schaden/Lebensverlust an dich`:`${pnick(p)} korrigiert: +${-d} Leben für dich`);net.seen[p.peer]=tot}}
+    if(others.length){const fp=(game.opps[game.focus]||{}).peer;
+      game.opps=others.map(p=>({name:pnick(p),peer:p.peer,pres:p.presence,life:nnum(p.presence.life)-((net.dealt[p.peer]||0)-nnum(p.presence.ack&&p.presence.ack[me]))}));
+      game.focus=Math.max(0,game.opps.findIndex(o=>o.peer===fp));
+    }else if(game.opps.some(o=>o.peer)){game.opps=dummyOpps();game.focus=0}
+    netCheckTurn();
+  }
+  renderNet();renderGame();
+  if(net.view&&$('#ov').classList.contains('on')&&!pending)netView(net.view,true);
+}
+async function netCheckTurn(){
+  const t=activeTok();if(!t||t.h!==netMe()||t.s===net.tokDone||game.phase!=='play'||net.busy)return;
+  net.tokDone=t.s;
+  if(!net.first){net.first=true;logm('▶ Du bist am Zug');if(game.onPlay&&(netOthers().length>=2||t.s>1)){drawCards(1,{step:true});await resolveQueue()}renderGame();return}
+  net.busy=true;try{await beginTurn();logm('▶ Du bist am Zug')}finally{net.busy=false}renderGame();
+}
+function netSetTok(h){const t=activeTok();net.tok={s:(t?t.s:0)+1,h};pushState();setTimeout(netSync,0)}
+function netPass(){const me=netMe();const order=netPeers().map(p=>p.peer).sort();if(!order.includes(me))order.push(me);order.sort();netSetTok(order[(order.indexOf(me)+1)%order.length])}
+function netStart(){const o=netPeers().map(p=>p.peer);if(!o.length)return;netSetTok(o[Math.floor(Math.random()*o.length)])}
+async function netJoin(){
+  if(!roomCap)return;if(!deck){net.err='Bitte zuerst ein Deck laden.';renderNet();return}
+  net.nick=nstr($('#netNick').value.trim(),24)||'Spieler';net.code=($('#netCode').value||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,20)||'tisch1';
+  lsSet('mtg_nick',net.nick);lsSet('mtg_code',net.code);net.err='';
+  try{table=await roomCap.join('mtg-'+net.code);net.lobby=false}
+  catch(e){{net.err='Beitritt fehlgeschlagen'+(e&&e.code?` (${e.code})`:'')+'. Supabase-URL/Key in config.js prüfen; pausierte Projekte im Supabase-Dashboard wieder aktivieren.';table=null;renderNet();return}}
+  try{table.onPeers(()=>netSync(),e=>{net.err='Verbindung beendet'+(e&&e.code?` (${e.code})`:'');table=null;netSync2Solo()})}catch(e){}
+  if(!game)newGame(true);
+  net.last='';pushState();netSync();
+}
+function netSync2Solo(){if(game&&game.opps.some(o=>o.peer)){game.opps=dummyOpps();game.focus=0}renderNet();if(game)renderGame()}
+async function netLeave(){const t=table;table=null;net.tok=null;net.last='';
+  try{if(t&&net.lobby)await t.presence({v:null,bf:null,log:null,gy:null,tok:null,dealt:null,ack:null});else if(t&&t.leave)await t.leave()}catch(e){}
+  netSync2Solo()}
+function renderNet(){
+  const el=$('#netBox');if(!el)return;
+  if(!roomCap){el.innerHTML=`<div class="zone small mute">🌐 Online-Modus: Supabase ist noch nicht eingerichtet – Projekt-URL und Key in <b>config.js</b> eintragen (siehe README).</div>`;return}
+  if(!table){el.innerHTML=`<div class="zone"><div class="zh"><span>🌐 Online spielen</span></div><div class="row">
+    <input id="netNick" placeholder="Dein Name" maxlength="24" value="${esc(net.nick)}" style="flex:1;min-width:110px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px">
+    <input id="netCode" placeholder="Tisch-Code" maxlength="20" value="${esc(net.code)}" style="width:120px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px">
+    <button class="btn pri" data-net="join">Tisch beitreten</button></div>
+    <p class="small mute" style="margin:8px 0 0">Alle Mitspieler öffnen diese Seite, laden ihr Deck und geben denselben Tisch-Code ein.</p>${net.err?`<div class="status err">${esc(net.err)}</div>`:''}</div>`;return}
+  const ps=netPeers(),me=netMe(),t=activeTok(),h=netHolder();let conn=true;try{conn=table.connected()}catch(e){}
+  el.innerHTML=`<div class="zone"><div class="zh"><span>🌐 Tisch „${esc(net.code)}“${net.lobby?' (Lobby)':''} · ${ps.length} Spieler${conn?'':' · verbinde…'}</span><button class="btn sm" data-net="leave">Verlassen</button></div>
+   <div class="row small">${ps.map(p=>`<span class="tag ${t&&t.h===p.peer?'gold':''}">${t&&t.h===p.peer?'▶ ':''}${esc(pnick(p))}${p.peer===me?' (du)':''}</span>`).join('')||'<span class="mute">Warte auf Mitspieler…</span>'}</div>
+   <div class="row" style="margin-top:8px">${!t?`<button class="btn sm pri" data-net="start" ${ps.length<2?'disabled':''}>Startspieler auslosen</button><span class="small mute">Vorher: alle Starthand behalten.</span>`:
+     (h&&h.gone?`<span class="small mute">Aktiver Spieler hat den Tisch verlassen.</span><button class="btn sm" data-net="take">Zug übernehmen</button>`:`<span class="small">${netMyTurn()?'<b style="color:var(--gold)">Du bist am Zug.</b>':`Am Zug: <b>${esc(pnick(h))}</b>`}</span>`)}</div>
+   ${net.err?`<div class="status err">${esc(net.err)}</div>`:''}</div>`;
+}
+function netView(peer,keep){
+  const p=netPeers().find(x=>x.peer===peer);if(!p){if(!keep)return;closeSheet();return}
+  const s=p.presence,bf=Array.isArray(s.bf)?s.bf.slice(0,80):[];
+  const tile=e=>{const n=nstr(e[0],44),cnt=nnum(e[1]),tp=nnum(e[2]),b=nstr(e[3],14),im=imgOf(n);
+    return `<div class="chi" style="cursor:default;${tp>=cnt?'opacity:.55':''}">${im?`<img src="${im}" loading="lazy" alt="">`:''}<span>${esc(n)}${cnt>1?' ×'+cnt:''}${b?' · '+esc(b):''}${tp?` · ${tp>=cnt?'getappt':tp+' getappt'}`:''}</span></div>`};
+  const perms=bf.filter(e=>!e[4]),lands=bf.filter(e=>e[4]);
+  const html=`<h2 style="padding-right:30px">${esc(pnick(p))}</h2><p class="mute small" style="margin:4px 0">${esc(nstr(s.deck,60))} · Leben <b>${nnum(s.life)}</b> · Zug ${nnum(s.turn)} · Hand ${nnum(s.hand)} · Bibliothek ${nnum(s.lib)}</p>
+   <h3>Bleibende Karten</h3><div class="chgrid" style="max-height:none">${perms.map(tile).join('')||'<span class="mute small">leer</span>'}</div>
+   <h3>Länder</h3><div class="chgrid" style="max-height:none">${lands.map(tile).join('')||'<span class="mute small">keine</span>'}</div>
+   ${(s.cmd||[]).length?`<h3>Kommandozone</h3><p class="small">${(s.cmd||[]).slice(0,4).map(x=>esc(nstr(x,44))).join(', ')}</p>`:''}
+   <h3>Friedhof (${nnum(s.gyN)})</h3><p class="small">${(Array.isArray(s.gy)?s.gy:[]).slice(0,8).map(x=>esc(nstr(x,40))).join(' · ')||'–'}</p>
+   <h3>Letzte Aktionen</h3><p class="small mute">${(Array.isArray(s.log)?s.log:[]).slice(0,4).map(x=>esc(nstr(x,90))).join('<br>')||'–'}</p>`;
+  if(keep){const sc=$('#sheet').scrollTop;$('#sheet').innerHTML='<button class="x" data-close>×</button>'+html;$('#sheet').scrollTop=sc}else{sheet(html)}
+  net.view=peer;
+}
+
+/* ---------- Import & glue ---------- */
+function importDeck(txt){
+  const st=$('#importStatus');
+  const d=parseDeck(txt||'');
+  const n=total(d.main)+total(d.commander);
+  if(!n){st.className='status err';st.textContent='Keine Karten erkannt. Format: „1 Kartenname“ pro Zeile.';return false}
+  const f=$('#format').value;
+  d.format=f==='auto'?(n>=90||d.commander.length?'commander':'constructed'):f;
+  deck=d;game=null;analysis=lsGet('mtg_ana_'+deckHash(),null);
+  lsSet('mtg_last_deck',txt);
+  st.className='status';st.textContent=`${n} Karten erkannt${d.commander.length?` · Commander: ${d.commander.map(x=>x.name).join(' + ')}`:''}${d.side.length?` · Sideboard: ${total(d.side)}`:''} · Format: ${d.format==='commander'?'Commander':'60 Karten'}`;
+  renderAll();
+  return true;
+}
+function renderAll(){
+  const has=!!deck;
+  ['#noDeck1','#noDeck2','#noDeck3'].forEach(s=>$(s).style.display=has?'none':'');
+  $('#anaWrap').style.display=has?'':'none';$('#gameWrap').style.display=has?'':'none';$('#chWrap').style.display=has?'':'none';
+  if(!has)return;
+  renderDeck();
+  const v=currentView();
+  if(v==='analyse')renderAnalyse();if(v==='testen')renderGame();if(v==='chancen'){renderSim();if(!$('#hands').innerHTML)renderHands()}
+  refreshAIButtons();
+}
+const VIEWS=['deck','analyse','testen','chancen'];
+function currentView(){const h=location.hash.slice(1);return VIEWS.includes(h)?h:'deck'}
+function showView(){const v=currentView();document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));renderAll();window.scrollTo(0,0)}
+window.addEventListener('hashchange',showView);
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)location.hash=b.dataset.v});
+
+const EXAMPLE=`Deck
+4 Monastery Swiftspear
+4 Soul-Scar Mage
+4 Kumano Faces Kakkazan
+4 Heartfire Hero
+4 Emberheart Challenger
+4 Slickshot Show-Off
+4 Lightning Bolt
+4 Burst Lightning
+4 Monstrous Rage
+4 Play with Fire
+2 Witchstalker Frenzy
+2 Shock
+16 Mountain
+
+Sideboard
+2 Abrade
+2 Pyroclasm`;
+$('#btnExample').onclick=()=>{$('#decktext').value=EXAMPLE};
+$('#btnImport').onclick=()=>{if(importDeck($('#decktext').value))loadCardData(false)};
+$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;const t=await f.text();$('#decktext').value=t;if(importDeck(t))loadCardData(false);e.target.value=''};
+$('#btnData').onclick=()=>loadCardData(true);
+$('#btnAnalyse').onclick=runAnalysis;
+$('#btnSim').onclick=renderSim;
+$('#btnHands').onclick=renderHands;
+['#hgCard','#hgTurn','#hgPlay'].forEach(s=>$(s).addEventListener('input',renderHG));
+$('#format').onchange=()=>{if(deck){const f=$('#format').value;const n=total(deck.main)+total(deck.commander);deck.format=f==='auto'?(n>=90||deck.commander.length?'commander':'constructed'):f;game=null;renderAll()}};
+
+document.addEventListener('click',async e=>{
+  const t=e.target;
+  if(pending){
+    const ch=t.closest('[data-ch]');
+    if(ch&&pending.kind==='choose'){const id=isNaN(+ch.dataset.ch)?ch.dataset.ch:+ch.dataset.ch;
+      if(pending.max===1&&pending.min<=1){finishPending([id]);return}
+      if(pending.sel.has(id))pending.sel.delete(id);else if(pending.sel.size<pending.max)pending.sel.add(id);
+      ch.classList.toggle('on',pending.sel.has(id));updCh();return}
+    if(t.closest('[data-chok]')){if(pending.sel.size<pending.min)return;finishPending([...pending.sel]);return}
+    if(t.closest('[data-numok]')){finishPending(+($('#numIn').value)||0);return}
+    if(t.closest('[data-chno]')||t.closest('[data-close]')||t.id==='ov'){finishPending(pending.kind==='num'?0:[]);return}
+    return;
+  }
+  if(t.closest('[data-close]')||t.id==='ov'){closeSheet();return}
+  const ed=t.closest('[data-edit]');if(ed){e.preventDefault();editSheet(ed.dataset.edit);return}
+  const sv=t.closest('[data-save]');if(sv){saveEdit(sv.dataset.save);return}
+  const ru=t.closest('[data-rules]');if(ru){rulesSheet(ru.dataset.rules);return}
+  const fs=t.closest('[data-fxsave]');if(fs){try{const v=JSON.parse($('#fxEdit').value);FXL[fs.dataset.fxsave]=v;lsSet('mtg_fx_v1',FXL);$('#fxStatus').textContent='Gespeichert ✓'}catch(err){$('#fxStatus').className='status err';$('#fxStatus').textContent='Ungültiges JSON: '+err.message}return}
+  const fl=t.closest('[data-fxlearn]');if(fl){const n=fl.dataset.fxlearn;delete FXL[n];await learnRules([n],$('#fxStatus'));if($('#fxEdit'))$('#fxEdit').value=JSON.stringify(fxOf(n)||{},null,1);return}
+  const fr=t.closest('[data-fxreset]');if(fr){delete FXL[fr.dataset.fxreset];lsSet('mtg_fx_v1',FXL);rulesSheet(fr.dataset.fxreset);return}
+  const r1=t.closest('[data-reload1]');if(r1){closeSheet();location.hash='deck';loadCardData(true,[r1.dataset.reload1]);return}
+  const cdx=t.closest('[data-card]');if(cdx&&!t.closest('#sheet')){sheet(cardDetailHTML(cdx.dataset.card));return}
+  const nb=t.closest('[data-net]');if(nb){const k=nb.dataset.net;if(k==='join')netJoin();else if(k==='leave')netLeave();else if(k==='start')netStart();else if(k==='take')netSetTok(netMe());return}
+  if(!game)return;
+  const lf=t.closest('[data-life]');if(lf){game.life+=+lf.dataset.life;renderGame();return}
+  const vw=t.closest('[data-view]');if(vw){netView(vw.dataset.view);return}
+  const ol=t.closest('[data-ol]');if(ol){const [i,d]=ol.dataset.ol.split('|');const o=game.opps[+i];o.life+=+d;if(o.peer)net.dealt[o.peer]=(net.dealt[o.peer]||0)-(+d);renderGame();return}
+  const op=t.closest('[data-opp]');if(op){game.focus=+op.dataset.opp;renderGame();return}
+  if(t.closest('[data-pool]')){game.pool=Math.max(0,game.pool-1);renderGame();return}
+  const a=t.closest('[data-a]');
+  if(a){const k=a.dataset.a;
+    if(k==='keep')keepHand();else if(k==='combat')attack();else if(k==='mull')mulligan();else if(k==='next')nextTurn();
+    else if(k==='draw'){drawN(1);renderGame()}else if(k==='lib')libSheet();else if(k==='attack')attack();
+    else if(k==='token'){mkToken('Token');logm('Token erzeugt');renderGame()}
+    else if(k==='restart')newGame();else if(k==='tipp'||k==='evalhand')aiTip(k);
+    return}
+  const ab=t.closest('[data-ab]');if(ab){const [id,i]=ab.dataset.ab.split('|');const fn=ABL[id]&&ABL[id][+i];closeSheet();if(fn){await fn.run();renderGame()}return}
+  const dd=t.closest('[data-do]');if(dd){const id=+dd.dataset.id;const c=game.library.find(x=>x.id===id)||findCard(id)?.c;if(!c)return;const k=dd.dataset.do;
+    if(k==='land')playLand(c);else if(k==='cast')cast(c);
+    else if(k==='cycle'){closeSheet();discardCards([c],{cycle:true});drawCards(1,{src:'Umwandeln'});const fx=fxOf(c.name);if(fx&&fx.cycle)await runActions(fx.cycle,{src:c,ctx:{}});await settle()}
+    else if(k==='mayhem'){if(isLandName(c.name))playLand(c);else cast(c)}
+    else if(k==='flashback'){c.fb=true;cast(c)}
+    else if(k==='discard'){closeSheet();discardCards([c]);await settle()}else if(k==='channel'){closeSheet();detach(c);game.gy.push(c);logm('Boseiju (Channel): Artefakt/Verzauberung/Nichtstandardland eines Gegners zerstört');renderGame()}
+    return}
+  const mv=t.closest('[data-mv]');
+  if(mv){const keep=mv.dataset.keep;if(!keep)closeSheet();move(+mv.dataset.id,mv.dataset.mv);if(keep){const m=$('#libView')?.dataset.mode;libView(m);const h=$('#sheet h2');if(h)h.textContent=`Bibliothek (${game.library.length})`}return}
+  const tp=t.closest('[data-tap]');if(tp){const f=findCard(+tp.dataset.tap);if(f){f.c.tapped=!f.c.tapped}closeSheet();renderGame();return}
+  const l=t.closest('[data-l]');
+  if(l){const k=l.dataset.l;if(k==='shuffle'){shuffle(game.library);logm('Bibliothek gemischt');closeSheet();renderGame()}else if(k==='mill'){closeSheet();mill(1);renderGame()}else libView(k);return}
+  const c=t.closest('[data-id][data-zone]');
+  if(c&&!t.closest('#sheet')){const z=c.dataset.zone;
+    if(z==='lands'&&game.phase==='play'){const f=findCard(+c.dataset.id);if(f&&!abilities(f.c).length){f.c.tapped=!f.c.tapped;renderGame();return}}
+    cardSheet(+c.dataset.id,z);return}
+});
+document.addEventListener('dblclick',e=>{const c=e.target.closest('.mc[data-zone="bf"],.mc[data-zone="lands"]');if(c&&game){const f=findCard(+c.dataset.id);if(f){f.c.tapped=!f.c.tapped;renderGame()}}});
+document.addEventListener('change',e=>{
+  if(e.target.id==='autoT'&&game){game.auto=e.target.checked;return}
+  if(e.target.id==='figT'){FIG=e.target.checked;lsSet('mtg_fig',FIG);if(game)renderGame();return}
+  if(e.target.id==='playDraw'&&game){game.onPlay=e.target.value==='1';if(game.phase!=='play'){newGame(game.onPlay)}else renderGame()}
+  if(e.target.id==='nOpp'&&game){const n=+e.target.value;game.nOpp=n;const L=fmt()==='commander'?40:20;while(game.opps.length<n)game.opps.push({name:'Gegner '+(game.opps.length+1),life:L});game.opps.length=n;if(game.focus>=n)game.focus=0;renderGame()}
+});
+
+const loadDeckFile=async f=>{try{const t=await (await fetch(f)).text();$('#decktext').value=t;importDeck(t);loadCardData(false)}catch(e){$('#importStatus').textContent='Deck konnte nicht geladen werden.'}};
+$('#btnMine').onclick=()=>loadDeckFile('cards/deck.txt');$('#btnDoom').onclick=()=>loadDeckFile('cards/deck-doom.txt');
+$('#btnLearn').onclick=()=>{const ns=[...new Set(allNames())].filter(needsRules);learnRules(ns,$('#learnStatus'))};
+/* restore last deck */
+(async()=>{
+  try{BUNDLE=await (await fetch('cards/index.json')).json()}catch(e){BUNDLE={}}
+  try{FX=await (await fetch('cards/fx.json')).json()}catch(e){FX={}}
+  [...Object.keys(LANDFALL),...Object.keys(ETB),...Object.keys(SPELL),...Object.keys(FETCH),"Urza's Cave",'Zuran Orb','Sylvan Safekeeper','Aftermath Analyst','Strip Mine','Mina and Denn, Wildborn','Exploration','Azusa, Lost but Seeking','Dryad of the Ilysian Grove','Oracle of Mul Daya','Crucible of Worlds','Ramunap Excavator','Ancient Greenwarden','Traveling Chocobo','Amulet of Vigor','Horizon Explorer','Yavimaya, Cradle of Growth','Ashaya, Soul of the Wild','Ojer Axonil, Deepest Might','Hexhaven Invigorator','Conduit of Worlds','Stomping Ground','Boseiju, Who Endures','Cinder Glade','Spire Garden','Shifting Woodland','Vesuva','Sol Ring','Arcane Signet','Command Tower'].forEach(n=>HARD.add(n));
+  const last=lsGet('mtg_last_deck',null);
+  if(last){$('#decktext').value=last;importDeck(last)}
+  else{try{const t=await (await fetch('cards/deck.txt')).text();$('#decktext').value=t;importDeck(t)}catch(e){}}
+  showView();
+})();
+</script>
+</body>
+</html>
