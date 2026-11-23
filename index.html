@@ -257,6 +257,7 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
       <div class="card"><h2>Rollen im Deck</h2><table id="roles"></table><p class="mute small" style="margin:8px 0 0">Richtwerte für <span id="fmtLabel"></span>. Rollen werden aus dem Kartentext geschätzt.</p></div>
       <div class="card"><h2>Farben: Bedarf vs. Quellen</h2><div class="bars" id="colors"></div><p class="mute small" style="margin:8px 0 0">Links: Farbsymbole in Manakosten · rechts: Länder/Manaquellen, die die Farbe erzeugen.</p></div>
     </div>
+    <div class="card" id="trigBox"></div>
     <div class="card" id="aiCoach">
       <div class="row" style="justify-content:space-between">
         <h2 style="margin:0">Coach-Analyse</h2>
@@ -553,7 +554,7 @@ function sfToCard(c,askedName){
 async function loadCardDataScryfall(force,only){
   const st=$('#dataStatus');
   const names=only||[...new Set(allNames())].filter(n=>!basicOf(n)&&!BUNDLE[n.toLowerCase()]&&(force||!DB[n.toLowerCase()]||DB[n.toLowerCase()].u||!DB[n.toLowerCase()].img));
-  if(!names.length){st.className='status';st.textContent='Alle Kartendaten vorhanden.';return}
+  if(!names.length){st.className='status';st.textContent='Alle Kartendaten vorhanden.';const ar=autoBuildRules();if(ar&&ar.built)$('#learnStatus').textContent=`Trigger automatisch erstellt: ${ar.built} Karten (${ar.auto} Effekte automatisch, ${ar.manual} als Erinnerung von Hand).`;renderAll();return}
   st.className='status';let done=0,miss=[];
   try{
     for(let i=0;i<names.length;i+=70){
@@ -565,7 +566,7 @@ async function loadCardDataScryfall(force,only){
         if(c)DB[n.toLowerCase()]=sfToCard(c,n);else{miss.push(n);if(!DB[n.toLowerCase()])DB[n.toLowerCase()]={n,u:true,k:[],f:[],m:[],r:[],v:0,c:'',t:'?',s:''}}}
       done+=part.length;await sleep(120);
     }
-    lsSet('mtg_cards_v1',DB);
+    lsSet('mtg_cards_v1',DB);const ar=autoBuildRules();if(ar)$('#learnStatus').textContent=`Trigger automatisch erstellt: ${ar.built} Karten (${ar.auto} Effekte automatisch, ${ar.manual} als Erinnerung von Hand).`;
     st.className='status'+(miss.length?' err':'');
     st.textContent=miss.length?`Fertig – bei Scryfall nicht gefunden: ${miss.slice(0,6).join(', ')}${miss.length>6?' …':''}. Schreibweise prüfen oder Karte antippen → Daten eintragen.`:'Kartendaten von Scryfall geladen ✓';
   }catch(e){st.className='status err';st.textContent='Scryfall nicht erreichbar: '+(e.message||e)}
@@ -686,7 +687,7 @@ function renderAnalyse(){
   $('#colors').innerHTML=used.length?used.map(c=>{const sharePip=s.pips[c]/Math.max(1,COLORS.reduce((a,k)=>a+s.pips[k],0));const shareSrc=s.src[c]/Math.max(1,s.lands);
     const warn=sharePip>0.15&&s.src[c]<(fmt()==='commander'?12:8);
     return `<div class="b"><span class="l"><i class="pip ${c}">${c}</i> ${CNAME[c]}</span><span class="t"><span class="f" style="display:block;width:${s.pips[c]/pm*100}%;background:var(--${c})"></span></span><span class="v">${Math.round(s.pips[c])} / <b class="${warn?'lo':''}">${s.src[c]}</b></span></div>`}).join(''):'<p class="mute small">Keine Farbdaten – Kartendaten laden.</p>';
-  renderAnalysis();
+  renderAnalysis();renderTrigBox();
 }
 function renderAnalysis(){
   const el=$('#analysis');
@@ -809,7 +810,7 @@ const hasType=(c,t)=>new RegExp('\\b'+t+'\\b').test(typesOf(c));
 const isVillain=c=>hasType(c,'Villain');
 function fxFilter(f){f=f||{};return c=>{const d=card(c.name);
   if(f.any)return true;
-  if(f.type&&!new RegExp('\\b'+f.type+'\\b').test(d.t))return false;
+  if(f.type&&!new RegExp('\\b('+f.type+')\\b').test(d.t))return false;
   if(f.basic&&!/Basic/.test(d.t))return false;
   if(f.land===true&&!d.k.includes('Land'))return false;if(f.land===false&&d.k.includes('Land'))return false;
   if(f.shares_color_legend){const leg=game.bf.filter(x=>/Legendary/.test(cd(x).t)&&isCreatureInst(x)).flatMap(x=>cd(x).f);if(!d.f.some(x=>leg.includes(x)))return false}
@@ -818,9 +819,11 @@ function fxFilter(f){f=f||{};return c=>{const d=card(c.name);
 function trigMatch(s,tr,ev,ctx){
   const f=tr.f||{},I=tr.if||{};
   if(ev==='etb'&&ctx.c!==s)return false;
-  if(ev==='etb_other'){if(ctx.c===s)return false;if(f.type&&!hasType(ctx.c,f.type))return false}
+  if(ev==='etb_other'){if(ctx.c===s&&!f.self_ok)return false;if(f.type&&!hasType(ctx.c,f.type))return false;if(f.creature&&!isCreatureInst(ctx.c))return false}
   if(ev==='discard'){if(f.other&&ctx.c===s)return false;if(f.land===true&&!ctx.land)return false;if(f.land===false&&ctx.land)return false}
   if(ev==='draw_nth'&&f.nth&&ctx.nth!==f.nth)return false;
+  if(ev==='cast'){const k=ctx.k||[];if(f.spell==='creature'&&!k.includes('Creature'))return false;if(f.spell==='noncreature'&&k.includes('Creature'))return false;if(f.spell==='instant_sorcery'&&!(k.includes('Instant')||k.includes('Sorcery')))return false;if(f.spell==='artifact'&&!k.includes('Artifact'))return false;if(f.spell==='enchantment'&&!k.includes('Enchantment'))return false}
+  if(ev==='dies'){if(f.nontoken&&ctx.c.token)return false;if(f.self&&ctx.c!==s)return false;if(f.other&&ctx.c===s)return false;if(f.type&&!hasType(ctx.c,f.type))return false}
   if(ev==='attack'&&!(ctx.attackers||[]).includes(s))return false;
   if(ev==='combat_damage'&&ctx.c!==s)return false;
   if(ev==='combat_damage_attached'&&s.attachedTo!==ctx.c.id)return false;
@@ -901,7 +904,7 @@ function mkTokens(spec,n=1,src){const ts=[];for(let i=0;i<n;i++){const c=mkToken
 function treasure(n,tapped,src){return mkTokens({name:'Treasure',k:['Artifact'],p:'',types:'Treasure',treasure:true,tapped},n,src)}
 function toughness(c){const m=String(c.p||cd(c).p||'').match(/\/(\d+)/);let t=m?+m[1]:0;if(fxStatic(c,'power_hand'))t=game.hand.length;t+=(c.ctr||0);if(isVillain(c))t+=2*game.bf.filter(s=>s!==c&&fxStatic(s,'other_villains_pt')).length;return t}
 function indestructible(c){return fxStatic(c,'indestructible_if_artifact_creature')&&game.bf.some(x=>isCreatureInst(x)&&cd(x).k.includes('Artifact'))}
-function killCreature(c,why){detach(c);if(c.token)return;c.tapped=false;c.ctr=0;if(c.commander){game.cmd.push(c);logm(`${c.name} → Kommandozone`)}else game.gy.push(c)}
+function killCreature(c,why){if(game.bf.includes(c))emit('dies',{c});detach(c);if(c.token)return;c.tapped=false;c.ctr=0;if(c.commander){game.cmd.push(c);logm(`${c.name} → Kommandozone`)}else game.gy.push(c)}
 async function pickTarget(title,f,opts={}){const list=game.bf.filter(c=>isCreatureInst(c)&&(!f||!f.type||hasType(c,f.type)));if(!list.length)return null;
   if(game.auto||list.length===1){return opts.prefer?(list.find(opts.prefer)||list[0]):list.sort((a,b)=>power(b)-power(a))[0]}
   const ids=await choose(title,list.map(o=>({id:o.id,label:`${cd(o).n} (${power(o)}/${toughness(o)})`,img:instImg(o)})),{max:1,min:1});return game.bf.find(x=>x.id===ids[0])||null}
@@ -925,6 +928,7 @@ async function runAction(a,env){
       break}
     case 'connive_x':{const c=game.bf.find(x=>x.id===src.attachedTo);const n=numv(a.connive_x,env);if(c&&n)await connive(c,n);break}
     case 'opp_lose':oppLose(numv(a.opp_lose,env),sn);break;
+    case 'lose_target':oppLose(numv(a.lose_target,env),sn,{each:false});break;
     case 'opp_lose_enchanted':{const o=game.opps[src.encOpp??game.focus];if(o){loseOpp(o,numv(a.opp_lose_enchanted,env));logm(`${sn}: ${o.name} verliert ${a.opp_lose_enchanted}`)}break}
     case 'opp_dmg':dmgOpp(sn,numv(a.opp_dmg,env),{red:!!src&&cd(src).f.includes('R')});break;
     case 'dmg_target':dmgOpp(sn,numv(a.dmg_target,env),{each:false,red:!!src&&cd(src).f.includes('R')});break;
@@ -933,7 +937,7 @@ async function runAction(a,env){
     case 'token':mkTokens(a.token,a.token.n||1,sn);break;
     case 'treasure':treasure(numv(a.treasure,env),!!a.tapped,sn);break;
     case 'counter':{const o=a.counter,n=o.n||1;let ts=[];
-      if(o.to==='self')ts=[src];else if(o.to==='ctx')ts=[env.ctx.c];else if(o.to==='villains')ts=game.bf.filter(c=>isCreatureInst(c)&&isVillain(c));
+      if(o.to==='self')ts=[src];else if(o.to==='ctx')ts=[env.ctx.c];else if(o.to==='creatures')ts=game.bf.filter(isCreatureInst);else if(o.to==='villains')ts=game.bf.filter(c=>isCreatureInst(c)&&isVillain(c));
       else if(o.to==='target'){const t=await pickTarget(`${sn}: +1/+1-Marke auf…`,o.f);if(t)ts=[t]}
       for(const t of ts.filter(t=>t&&game.bf.includes(t))){t.ctr=(t.ctr||0)+n;t.ctrT=game.turn}
       if(ts.length)logm(`${sn}: +${n} Marke auf ${ts.map(t=>cd(t).n).join(', ')}`);break}
@@ -1003,7 +1007,7 @@ async function learnRules(names,statusEl){
 }
 function rulesSheet(name){
   const fx=fxOf(name);
-  sheet(`<h2 style="padding-right:30px">Regeln: ${esc(name)}</h2><p class="mute small">${FXL[name]?(FXL[name].learned?'Von Claude gelernt':'Von dir bearbeitet'):(FX[name]?'Mitgeliefert':'Noch keine Regeln')} · JSON in der Effekt-Sprache</p>
+  sheet(`<h2 style="padding-right:30px">Regeln: ${esc(name)}</h2><p class="mute small">${FXL[name]?(FXL[name].auto?'Automatisch aus dem Kartentext erkannt':FXL[name].learned?'Von Claude gelernt':'Von dir bearbeitet'):(FX[name]?'Mitgeliefert':'Noch keine Regeln')} · JSON in der Effekt-Sprache</p>
    <textarea id="fxEdit" style="min-height:220px">${esc(JSON.stringify(fx||{},null,1))}</textarea>
    <div class="acts"><button class="btn pri" data-fxsave="${esc(name)}">Speichern</button>${sample?`<button class="btn ai" data-fxlearn="${esc(name)}">✦ Neu lernen</button>`:''}${FXL[name]?`<button class="btn" data-fxreset="${esc(name)}">Zurücksetzen</button>`:''}</div><div class="status" id="fxStatus"></div>`);
 }
@@ -1052,6 +1056,7 @@ function detach(c){for(const z of ZONES){const i=game[z].indexOf(c);if(i>=0){gam
 function move(id,to){
   const f=findCard(id);if(!f)return;
   if(to==='bf'){putOnBf([f.c]);return}
+  if(f.z==='bf'&&to==='gy'&&isCreatureInst(f.c)){emit('dies',{c:f.c});setTimeout(settle,0)}
   game[f.z].splice(f.i,1);const c=f.c;c.tapped=false;c.vx=false;
   if(c.token){logm(`Token ${c.name} entfernt`);renderGame();return}
   if(c.flip&&to!=='bf')c.flip=false;
@@ -1081,8 +1086,8 @@ const landsOnBf=()=>game.bf.filter(isLandInst);
 function power(c){const n=bname(c);let p;if(n==='Lumra, Bellow of the Woods'||n==='Ashaya, Soul of the Wild')p=landsOnBf().length;else if(fxStatic(c,'power_hand'))p=game.hand.length;else{const m=String(c.p||cd(c).p||'').match(/^(\d+)/);p=m?+m[1]:0}
   p+=(c.ctr||0);if(isCreatureInst(c)&&isVillain(c))p+=2*game.bf.filter(s=>s!==c&&fxStatic(s,'other_villains_pt')).length;return p}
 const isLandName=n=>card(n).k.includes('Land');
-function landDrops(){return 1+onBf('Exploration').length+onBf('Dryad of the Ilysian Grove').length+onBf('Oracle of Mul Daya').length+onBf('Mina and Denn, Wildborn').length+onBf('Icetill Explorer').length+2*onBf('Azusa, Lost but Seeking').length}
-const gyPlay=()=>['Crucible of Worlds','Ramunap Excavator','Mole Man, Moloid Master','Icetill Explorer','Ancient Greenwarden','Conduit of Worlds'].some(has);
+function landDrops(){return 1+onBf('Exploration').length+onBf('Dryad of the Ilysian Grove').length+onBf('Oracle of Mul Daya').length+onBf('Mina and Denn, Wildborn').length+onBf('Icetill Explorer').length+2*onBf('Azusa, Lost but Seeking').length+game.bf.reduce((a,c)=>a+(+fxStatic(c,'extra_land')||0),0)}
+const gyPlay=()=>['Crucible of Worlds','Ramunap Excavator','Mole Man, Moloid Master','Icetill Explorer','Ancient Greenwarden','Conduit of Worlds'].some(has)||anyStatic('play_lands_from_gy');
 const topPlay=()=>has('Oracle of Mul Daya')||has('Traveling Chocobo');
 function mkToken(name,o={}){const c=inst(name,{token:true,p:o.p??'1/1',k:o.k||['Creature'],tt:o.t||('Token '+(o.k||['Creature']).join(' ')),landTok:!!o.landTok,treasure:!!o.treasure,lander:!!o.lander,copyImg:!!o.copyImg,entered:game.turn,bornT:Date.now()});game.bf.push(c);return c}
 function mill(n,src){const m=game.library.splice(0,n);game.gy.push(...m);if(m.length)logm(`${src?src+': ':''}Millt ${m.map(c=>c.name).join(', ')}`)}
@@ -1256,7 +1261,7 @@ async function payCost(c,k){
   return true;
 }
 async function cast(c){
-  closeSheet();const d=cd(c);const from=detach(c);
+  closeSheet();const d=cd(c);const from=detach(c);emit('cast',{c,k:d.k});
   if(from==='cmd'){game.tax[c.name]=(game.tax[c.name]||0)+1}
   if(d.k.includes('Instant')||d.k.includes('Sorcery')){
     logm(`Wirkt ${d.n}`);const h=SPELL[c.name];
@@ -1449,6 +1454,138 @@ Deckliste zur Einordnung:\n${deck.commander.map(x=>x.name).join(', ')}\n${deck.m
 }
 function fmtTip(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^#+\s*/gm,'')}
 
+/* ---------- Automatische Regeln aus dem Kartentext ---------- */
+const NUMW={a:1,an:1,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+const pnum=s=>{s=String(s||'').toLowerCase();return NUMW[s]||(/^\d+$/.test(s)?+s:null)};
+function parseEffect(t){
+  t=t.trim();const acts=[];let rest=t;
+  if(/\bX\b|equal to|for each|where |that many|twice|half |number of/i.test(t))return {acts:[{manual:t}],auto:false};
+  const take=(re,fn)=>{const m=rest.match(re);if(!m)return;const a=fn(m);if(!a)return;(Array.isArray(a)?a:[a]).forEach(x=>acts.push(x));rest=rest.replace(m[0],' ')};
+  take(/draws? (a|an|\w+) cards?,? then discards? (a|an|\w+) cards?/i,m=>pnum(m[1])&&pnum(m[2])?{loot:[pnum(m[1]),pnum(m[2])]}:null);
+  take(/discards? (a|an|\w+) cards?,? then draws? (a|an|\w+) cards?/i,m=>pnum(m[1])&&pnum(m[2])?[{discard:pnum(m[1])},{draw:pnum(m[2])}]:null);
+  take(/target (?:player|opponent) loses (\w+) life/i,m=>pnum(m[1])?{lose_target:pnum(m[1])}:null);
+  take(/each opponent loses (\w+) life/i,m=>pnum(m[1])?{opp_lose:pnum(m[1])}:null);
+  take(/deals (\d+) damage to each opponent/i,m=>({opp_dmg:+m[1]}));
+  take(/deals (\d+) damage to (any target|target player or planeswalker|target player|target opponent|target creature or player|each player)/i,m=>({dmg_target:+m[1]}));
+  take(/you gain (\w+) life/i,m=>pnum(m[1])?{gain:pnum(m[1])}:null);
+  take(/you lose (\w+) life/i,m=>pnum(m[1])?{lose:pnum(m[1])}:null);
+  take(/create (a|an|\w+) (tapped )?treasure tokens?/i,m=>pnum(m[1])?{treasure:pnum(m[1]),tapped:!!m[2]}:null);
+  take(/create (a|an|\w+) (tapped )?(\d+\/\d+) ([^.]*?) creature tokens?/i,m=>{const n=pnum(m[1]);if(!n)return null;const art=/artifact/i.test(m[4]);
+    const ty=m[4].replace(/\b(white|blue|black|red|green|colorless|and|artifact|enchantment|legendary|snow)\b/gi,'').replace(/\s+/g,' ').trim()||'Token';
+    return {token:{name:ty,p:m[3],k:art?['Artifact','Creature']:['Creature'],types:ty,n,tapped:!!m[2]}}});
+  take(/create (a|an|\w+) (tapped )?(Food|Clue|Blood|Map|Powerstone|Gold|Lander|Junk) tokens?/i,m=>pnum(m[1])?{token:{name:m[3],p:'',k:['Artifact'],types:m[3],n:pnum(m[1])}}:null);
+  take(/put (a|an|\w+) \+1\/\+1 counters? on (~|it|this creature|each creature you control|each other creature you control|target creature[^.,]*)/i,m=>{const n=pnum(m[1]);if(!n)return null;const w=m[2].toLowerCase();
+    return {counter:{n,to:/each/.test(w)?'creatures':/target/.test(w)?'target':'self'}}});
+  take(/mills? (a|an|\w+) cards?/i,m=>pnum(m[1])?{mill:pnum(m[1])}:null);
+  take(/search your library for up to two basic land cards,[^.]*put one onto the battlefield tapped and the other into your hand[^.]*\.?( then shuffle\.?)?/i,()=>[{search:{f:{type:'Land',basic:true},max:1,dest:'bf',tapped:true}},{search:{f:{type:'Land',basic:true},max:1,dest:'hand'}}]);
+  take(/search your library for (?:up to (\w+) |a |an )?(basic land|land|creature|artifact|enchantment|instant or sorcery|instant|sorcery|planeswalker)? ?cards?[^.]*?(onto the battlefield( tapped)?|into your hand|on top of your library)/i,m=>{
+    const k=(m[2]||'').toLowerCase(),f=k==='basic land'?{type:'Land',basic:true}:k==='instant or sorcery'?{type:'Instant|Sorcery'}:k?{type:k[0].toUpperCase()+k.slice(1)}:{any:true};
+    return {search:{f,max:pnum(m[1])||1,dest:/battlefield/.test(m[3])?'bf':/hand/.test(m[3])?'hand':'top',tapped:!!m[4]}}});
+  take(/return (?:up to (\w+) )?target (creature|land|artifact|enchantment|permanent|instant or sorcery)? ?cards? from your graveyard to (your hand|the battlefield)/i,m=>{const k=(m[2]||'').toLowerCase();
+    return {from_gy:{f:!k||k==='permanent'?{any:true}:k==='instant or sorcery'?{type:'Instant|Sorcery'}:{type:k[0].toUpperCase()+k.slice(1)},max:pnum(m[1])||1,dest:/hand/.test(m[3])?'hand':'bf'}}});
+  take(/add ((?:\{[^}]+\})+)/i,m=>({mana:(m[1].match(/\{/g)||[]).length}));
+  take(/add (one|two|three|four|five) mana/i,m=>({mana:pnum(m[1])}));
+  take(/(~|it|this creature) connives/i,()=>({connive:'self'}));
+  take(/draws? (a|an|\w+) cards?/i,m=>pnum(m[1])?{draw:pnum(m[1])}:null);
+  take(/discards? (a|an|\w+) cards?/i,m=>pnum(m[1])?{discard:pnum(m[1])}:null);
+  take(/(scry|surveil) (\d+)/i,m=>({manual:(m[1].toLowerCase()==='scry'?'Hellsicht ':'Überwachen ')+m[2]}));
+  if(!acts.length)return {acts:[{manual:t}],auto:false};
+  const left=rest.replace(/\b(you|may|then|and|if you do|instead|target|until end of turn|this turn|each player|each opponent|your|it|its controller)\b/gi,'').replace(/[^a-z]/gi,'');
+  if(left.length>20){acts.push({manual:'Rest von Hand: '+t});return {acts,auto:false}}
+  return {acts,auto:true};
+}
+function parseCond(c,landfall){
+  c=c.trim();let m;
+  if(landfall||/^a land (you control )?enters|^a land enters (the battlefield )?under your control/i.test(c))return [{on:'landfall'}];
+  if(/^~ enters( the battlefield)? or attacks/i.test(c))return [{on:'etb'},{on:'attack'}];
+  if(/^~ enters/i.test(c))return [{on:'etb'}];
+  if(/^~ (and at least \w+ other creatures? )?attacks?/i.test(c))return [{on:'attack'}];
+  if(/^you attack/i.test(c))return [{on:'attack_any'}];
+  if(/^~ deals combat damage to (a player|an opponent)/i.test(c))return [{on:'combat_damage'}];
+  if(/^~ or another creature( you control)? dies/i.test(c))return [{on:'dies'}];
+  if(/^~ dies/i.test(c))return [{on:'dies',f:{self:true}}];
+  if(/^another creature( you control)? dies/i.test(c))return [{on:'dies',f:{other:true}}];
+  if(/^another nontoken creature( you control)? dies/i.test(c))return [{on:'dies',f:{other:true,nontoken:true}}];
+  if(/^a creature you control dies/i.test(c))return [{on:'dies'}];
+  if(/^another creature( you control)? enters/i.test(c))return [{on:'etb_other',f:{creature:true}}];
+  if(/^(a|one or more) creatures?( you control)? enters?/i.test(c))return [{on:'etb_other',f:{creature:true,self_ok:true}}];
+  if((m=c.match(/^another (?:nontoken )?([A-Z][a-z]+)( you control)? enters/)))return [{on:'etb_other',f:{type:m[1]}}];
+  if((m=c.match(/^an? (?:nontoken )?([A-Z][a-z]+)( you control)? enters/)))return [{on:'etb_other',f:{type:m[1],self_ok:true}}];
+  if(/^you draw your second card each turn/i.test(c))return [{on:'draw_nth',f:{nth:2}}];
+  if(/^you draw a card/i.test(c))return [{on:'draw'}];
+  if(/^you discard one or more cards/i.test(c))return [{on:'discard_batch'}];
+  if(/^you (cycle or )?discard a(nother)? card/i.test(c))return [{on:'discard'}];
+  if((m=c.match(/^you cast (?:a |an |your first )?(noncreature|creature|instant or sorcery|artifact|enchantment)? ?spell/i))){const k=(m[1]||'').toLowerCase();
+    return [{on:'cast',f:k?{spell:k==='instant or sorcery'?'instant_sorcery':k}:{}}]}
+  if(/^your upkeep|^each upkeep|^each player's upkeep/i.test(c))return [{on:'upkeep'}];
+  if(/^combat on your turn|^each combat/i.test(c))return [{on:'combat_start'}];
+  if(/^your end step|^the end step|^each end step/i.test(c))return [{on:'end_step'}];
+  return null;
+}
+function parseCard(name,d){
+  const fx={},info={auto:0,manual:0,skipped:0};
+  let text=(d.o||'').split('\n//\n')[0];if(!text)return {fx:null,info};
+  const short=name.split(',')[0].split(' // ')[0];
+  const escRe=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  text=text.replace(/\([^)]*\)/g,'').replace(new RegExp(escRe(name.split(' // ')[0]),'g'),'~').replace(new RegExp('\\b'+escRe(short)+'\\b','g'),'~').replace(/\bthis (creature|artifact|enchantment|land|permanent|Class|Equipment|Aura)\b/gi,'~');
+  const isSpell=d.k.includes('Instant')||d.k.includes('Sorcery');
+  const stat={};const add=(k,v)=>{(fx[k]=fx[k]||[]).push(v)};
+  const count=r=>{r.auto?info.auto++:info.manual++};
+  if(isSpell){
+    const fb=text.match(/Flashback (\{[^ \n]+)/);if(fb)stat.flashback=fb[1];
+    const body=text.split('\n').filter(l=>!/^(Flashback|Cycling|Kicker|Overload|Convoke|Spree|Buyback)/.test(l)).join(' ').trim();
+    if(body){const r=parseEffect(body);fx.spell=r.acts;count(r)}
+  }else for(let line of text.split('\n')){
+    line=line.trim();if(!line)continue;let m;
+    let landfall=false;const aw=line.match(/^([A-Z][\w' ]{2,28}) — (.*)$/);if(aw){landfall=/^Landfall$/i.test(aw[1]);line=aw[2]}
+    if((m=line.match(/^(?:When|Whenever|At the beginning of) (.+?), (.+)$/i))){
+      const conds=parseCond(m[1],landfall);if(!conds){info.skipped++;continue}
+      const eff=m[2];const cond=/\bif\b|\bunless\b|you may pay|only once|as long as|\bpay \{/i.test(eff);
+      const r=cond?{acts:[{manual:eff}],auto:false}:parseEffect(eff);
+      for(const c of conds){add('trig',{...c,do:r.acts});}count(r);continue}
+    if(/^Enchant creature/i.test(line)){stat.aura='creature';continue}
+    if((m=line.match(/^Equip (\{[^ ]+)/))){stat.equip=m[1];continue}
+    if((m=line.match(/^You may play (an|two|three) additional lands? on each of your turns/i))){stat.extra_land=m[1]==='an'?1:pnum(m[1]);info.auto++;continue}
+    if(/^You may play lands from your graveyard/i.test(line)){stat.play_lands_from_gy=true;info.auto++;continue}
+    if(/\blifelink\b/i.test(line)&&line.length<60)stat.lifelink=true;
+    if(/^Creatures you control have lifelink/i.test(line))stat.lifelink_all=true;
+    if((m=line.match(/^([^:]{1,70}): (.+)$/))&&/\{|Sacrifice|Pay \d+ life|Discard/.test(m[1])&&!/^[+\-−]?\d+$/.test(m[1].trim())){
+      const c=m[1],eff=m[2];if(d.k.includes('Land')&&/^Add /i.test(eff)&&!/Sacrifice/.test(c))continue;
+      if(/^\{[^}]+\}(, )?\{?T?\}?$/.test(c)&&0)continue;
+      const cost={};if(/\{T\}/.test(c))cost.tap=1;if(/Sacrifice ~/.test(c))cost.sac=1;else if(/Sacrifice an? (other |another )?([A-Z]\w+|creature)\b/.test(c)&&!/Sacrifice a land/i.test(c))cost.sac_creature=1;const pl=c.match(/Pay (\d+) life/);if(pl)cost.life=+pl[1];
+      const r=parseEffect(eff);const acts=/Sacrifice a land/i.test(c)?[{sac_lands:1},...r.acts]:/Discard a card/i.test(c)?[{discard:1},...r.acts]:r.acts;
+      add('act',{l:(c+': '+eff).slice(0,64),cost,do:acts});count(r);continue}
+  }
+  if(Object.keys(stat).length)fx.static=stat;
+  return {fx:Object.keys(fx).length?fx:null,info};
+}
+function autoBuildRules(){
+  if(!deck)return null;let built=0,auto=0,manual=0;
+  for(const n of new Set(allNames())){
+    if(basicOf(n)||FX[n]||HARD.has(n)||(FXL[n]&&!FXL[n].auto))continue;
+    const d=card(n);if(d.missing||!d.o)continue;
+    const r=parseCard(n,d);FXL[n]={...(r.fx||{}),auto:true,info:r.info};
+    if(r.fx)built++;auto+=r.info.auto;manual+=r.info.manual+r.info.skipped;
+  }
+  lsSet('mtg_fx_v1',FXL);return {built,auto,manual};
+}
+const THEME_DE={landfall:'Landfall',etb:'Kommt-ins-Spiel-Effekte',etb_other:'Reagiert auf neue Kreaturen',attack:'Angriffs-Trigger',attack_any:'Angriffs-Trigger',combat_damage:'Kampfschaden-Trigger',dies:'Todes-Trigger (Aristocrats)',draw:'Kartenzieh-Trigger',draw_nth:'Kartenzieh-Trigger',discard:'Abwurf-Trigger',discard_batch:'Abwurf-Trigger',cast:'Zauber-Trigger',upkeep:'Versorgungs-Trigger',end_step:'Endphasen-Trigger',combat_start:'Kampfbeginn-Trigger',connive:'Connive'};
+function renderTrigBox(){
+  const el=$('#trigBox');if(!el||!deck)return;
+  const themes={},payoff=[];let withRules=0,reminders=0,total=0;
+  for(const e of [...deck.commander,...deck.main]){const n=e.name;if(basicOf(n))continue;const d=card(n);if(d.k.includes('Land')&&!fxOf(n)&&!HARD.has(n))continue;total+=e.qty;
+    const fx=fxOf(n);if(HARD.has(n)&&!fx){withRules+=e.qty;if(d.r.includes('landfall'))(themes.landfall=themes.landfall||[]).push(n);continue}
+    if(!fx)continue;const has=(fx.trig||[]).length||(fx.act||[]).length||fx.spell||fx.static;if(has)withRules+=e.qty;
+    const man=JSON.stringify([fx.trig||[],fx.act||[],fx.spell||[]]).includes('"manual":');if(man)reminders+=e.qty;
+    for(const t of fx.trig||[]){const k=THEME_DE[t.on];if(k&&!(themes[k]||[]).includes(n))(themes[k]=themes[k]||[]).push(n);
+      if(JSON.stringify(t.do).match(/opp_lose|opp_dmg|dmg_target/)&&!payoff.includes(n))payoff.push(n)}}
+  const tl=Object.entries(themes).map(([k,v])=>[THEME_DE[k]||k,v]).sort((a,b)=>b[1].length-a[1].length).slice(0,7);
+  const cn=n=>`<b class="cn" data-card="${esc(n)}">${esc(n)}</b>`;
+  el.innerHTML=`<h2>Trigger &amp; Themen</h2><div class="kpis"><div class="kpi"><b>${withRules}</b><span>Karten mit automatischen Regeln</span></div><div class="kpi"><b>${reminders}</b><span>davon mit Erinnerung „von Hand“</span></div><div class="kpi"><b>${payoff.length}</b><span>Schadens-Trigger</span></div></div>
+   ${tl.length?'<h3>Themen im Deck</h3>'+tl.map(([k,v])=>`<div class="item"><b>${esc(k)}</b> <span class="tag gold">${v.length}</span><div class="small" style="margin-top:4px">${v.slice(0,8).map(cn).join(' · ')}${v.length>8?' …':''}</div></div>`).join(''):'<p class="mute small">Keine Trigger erkannt.</p>'}
+   ${payoff.length?`<h3>Womit das Deck Schaden macht</h3><p class="small">${payoff.slice(0,12).map(cn).join(' · ')}</p>`:''}
+   <p class="mute small" style="margin:10px 0 0">Die Regeln werden aus dem Kartentext gelesen. Bedingungen, X-Werte und alles, was Gegner entscheiden, erscheint im Protokoll als Erinnerung statt automatisch zu passieren. Karte antippen → „Regeln ansehen/bearbeiten“.</p>`;
+}
 /* ---------- Animationen ---------- */
 let liveN=0;
 let FIG=lsGet('mtg_fig',true);
@@ -1696,9 +1833,9 @@ document.addEventListener('click',async e=>{
   const ed=t.closest('[data-edit]');if(ed){e.preventDefault();editSheet(ed.dataset.edit);return}
   const sv=t.closest('[data-save]');if(sv){saveEdit(sv.dataset.save);return}
   const ru=t.closest('[data-rules]');if(ru){rulesSheet(ru.dataset.rules);return}
-  const fs=t.closest('[data-fxsave]');if(fs){try{const v=JSON.parse($('#fxEdit').value);FXL[fs.dataset.fxsave]=v;lsSet('mtg_fx_v1',FXL);$('#fxStatus').textContent='Gespeichert ✓'}catch(err){$('#fxStatus').className='status err';$('#fxStatus').textContent='Ungültiges JSON: '+err.message}return}
+  const fs=t.closest('[data-fxsave]');if(fs){try{const v=JSON.parse($('#fxEdit').value);delete v.auto;delete v.info;FXL[fs.dataset.fxsave]=v;lsSet('mtg_fx_v1',FXL);$('#fxStatus').textContent='Gespeichert ✓'}catch(err){$('#fxStatus').className='status err';$('#fxStatus').textContent='Ungültiges JSON: '+err.message}return}
   const fl=t.closest('[data-fxlearn]');if(fl){const n=fl.dataset.fxlearn;delete FXL[n];await learnRules([n],$('#fxStatus'));if($('#fxEdit'))$('#fxEdit').value=JSON.stringify(fxOf(n)||{},null,1);return}
-  const fr=t.closest('[data-fxreset]');if(fr){delete FXL[fr.dataset.fxreset];lsSet('mtg_fx_v1',FXL);rulesSheet(fr.dataset.fxreset);return}
+  const fr=t.closest('[data-fxreset]');if(fr){delete FXL[fr.dataset.fxreset];autoBuildRules();lsSet('mtg_fx_v1',FXL);rulesSheet(fr.dataset.fxreset);return}
   const r1=t.closest('[data-reload1]');if(r1){closeSheet();location.hash='deck';loadCardData(true,[r1.dataset.reload1]);return}
   const cdx=t.closest('[data-card]');if(cdx&&!t.closest('#sheet')){sheet(cardDetailHTML(cdx.dataset.card));return}
   const nb=t.closest('[data-net]');if(nb){const k=nb.dataset.net;if(k==='join')netJoin();else if(k==='leave')netLeave();else if(k==='start')netStart();else if(k==='take')netSetTok(netMe());return}

@@ -42,8 +42,7 @@ Tisch-Codes sind nicht geheim: Wer Link und Code kennt, kann beitreten.
 ## Was diese Version nicht hat
 
 - Keine KI-Funktionen (Deck-Analyse, Hand bewerten, Regeln lernen) – die bräuchten einen API-Schlüssel auf einem Server.
-- Automatische Trigger gibt es für die mitgelieferten Decks. Bei anderen Decks lassen sich Regeln pro Karte
-  von Hand eintragen (Karte antippen → „Regeln ansehen/bearbeiten“), sonst spielt man diese Karten manuell.
+- Automatische Trigger: Für die mitgelieferten Decks sind sie handgeschrieben. Bei jedem anderen Deck liest die App die Kartentexte von Scryfall und baut die Trigger selbst. Bedingungen, X-Werte und Gegner-Entscheidungen erscheinen als Erinnerung im Protokoll; Regeln lassen sich pro Karte nachbearbeiten.
 - Keine Blocker, keine Interaktion mit gegnerischen Karten; Spielstand geht beim Neuladen verloren.
 
 Kartendaten und -bilder: Scryfall. Magic: The Gathering ist eine Marke von Wizards of the Coast; dies ist ein inoffizielles Fan-Werkzeug.
