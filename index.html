@@ -141,7 +141,7 @@ td,th{padding:6px 4px;border-bottom:1px solid #262a33;text-align:left}
 th{color:var(--mute);font-weight:500}
 td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 .ok{color:var(--good)}.lo{color:var(--bad)}.mid{color:var(--warn)}
-.btn.ai,#aiCoach{display:none!important}
+body:not(.ai) .btn.ai,body:not(.ai) #aiCoach,body:not(.ai) #aiPwRow{display:none!important}
 #stage{position:fixed;inset:0;z-index:70;background:rgba(6,7,10,.9);display:flex;flex-direction:column;justify-content:space-between;padding:26px 14px 18px;gap:14px}
 #stage.in{flex-direction:column-reverse}
 #stage .tgt{position:relative;align-self:center;min-width:210px;text-align:center;background:var(--panel2);border:2px solid var(--bad);border-radius:16px;padding:12px 22px}
@@ -241,6 +241,7 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
       <select id="format"><option value="auto">Format: automatisch</option><option value="commander">Commander (100)</option><option value="constructed">60-Karten-Format</option></select>
     </div>
     <div class="status" id="importStatus"></div>
+    <div class="row" id="aiPwRow" style="margin-top:10px"><label class="small mute">KI-Passwort <input type="password" id="aiPw" autocomplete="off" style="width:150px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px"></label><button class="btn sm" id="aiPwSave">Speichern</button><span class="small mute" id="aiPwInfo">Für Deck-Analyse und Tipps (✦).</span></div>
   </div>
   <div class="card" id="deckCard" style="display:none">
     <div class="row" style="justify-content:space-between;margin-bottom:6px">
@@ -352,6 +353,7 @@ let uid=0;
 
 /* ---------- Claude ---------- */
 (async()=>{try{ if(window.claude&&claude.use){ sample=await claude.use('sample'); } }catch(e){sample=null}
+  if(STANDALONE)initStandaloneAI();
   refreshAIButtons(); })();
 function refreshAIButtons(){
   document.querySelectorAll('.btn.ai').forEach(b=>{ b.disabled=!sample; b.title=sample?'':'Claude-Funktion in dieser Ansicht nicht verfügbar'; });
@@ -367,7 +369,21 @@ async function ask(prompt,opts={}){
   const r=await sample(prompt,opts);
   return r.text;
 }
+function initStandaloneAI(){
+  const cfg=window.MTG_CONFIG||{};if(!cfg.aiFunction||!cfg.supabaseUrl||!cfg.supabaseKey)return;
+  document.body.classList.add('ai');
+  sample=async(prompt,opts={})=>{
+    const pw=lsGet('mtg_aipw','');if(!pw)throw {code:'not_granted',message:'Bitte zuerst das KI-Passwort im Tab „Deck“ eintragen.'};
+    const text=typeof prompt==='string'?prompt:prompt.map(m=>m.content).join('\n\n');
+    let r,j;try{r=await fetch(cfg.supabaseUrl.replace(/\/$/,'')+'/functions/v1/'+cfg.aiFunction,{method:'POST',headers:{'Content-Type':'application/json',apikey:cfg.supabaseKey},body:JSON.stringify({password:pw,prompt:text,tier:opts.modelTier||'default'}),signal:opts.signal});j=await r.json()}
+    catch(e){throw {code:'upstream_error',message:'KI-Dienst nicht erreichbar.'}}
+    if(!r.ok)throw {code:j.code||'upstream_error',message:j.message||('Fehler '+r.status)};
+    return {text:j.text||'',truncated:!!j.truncated};
+  };
+  const i=$('#aiPw');if(i)i.value=lsGet('mtg_aipw','');
+}
 function aiErr(e){
+  if(STANDALONE&&e&&e.message)return e.message;
   if(e&&e.code==='not_granted') return 'Zugriff auf Claude wurde nicht erlaubt.';
   if(e&&e.code==='rate_limited') return 'Gerade zu viele Anfragen – bitte kurz warten und erneut versuchen.';
   return (e&&e.message)||'Fehler bei der Anfrage.';
@@ -1882,6 +1898,7 @@ $('#btnExample').onclick=()=>{$('#decktext').value=EXAMPLE};
 $('#btnImport').onclick=()=>{if(importDeck($('#decktext').value))loadCardData(false)};
 $('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;const t=await f.text();$('#decktext').value=t;if(importDeck(t))loadCardData(false);e.target.value=''};
 $('#btnData').onclick=()=>loadCardData(true);
+$('#aiPwSave').onclick=()=>{lsSet('mtg_aipw',$('#aiPw').value.trim());$('#aiPwInfo').textContent='Gespeichert ✓';refreshAIButtons()};
 $('#btnAnalyse').onclick=runAnalysis;
 $('#btnSim').onclick=renderSim;
 $('#btnHands').onclick=renderHands;

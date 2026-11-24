@@ -41,7 +41,7 @@ Tisch-Codes sind nicht geheim: Wer Link und Code kennt, kann beitreten.
 
 ## Was diese Version nicht hat
 
-- Keine KI-Funktionen (Deck-Analyse, Hand bewerten, Regeln lernen) – die bräuchten einen API-Schlüssel auf einem Server.
+- KI-Funktionen (Deck-Analyse, Hand bewerten, Tipps) laufen über die Supabase Edge Function `mtg-ai` (Code in `supabase/functions/mtg-ai/index.ts`). Der Anthropic-Schlüssel liegt nur in den Supabase-Secrets (`ANTHROPIC_API_KEY`), dazu `MTG_PASSWORD` (Zugangspasswort für Mitspieler) und optional `MTG_DAILY_LIMIT` (Standard 200 Anfragen pro Tag).
 - Automatische Trigger: Für die mitgelieferten Decks sind sie handgeschrieben. Bei jedem anderen Deck liest die App die Kartentexte von Scryfall und baut die Trigger selbst. Bedingungen, X-Werte und Gegner-Entscheidungen erscheinen als Erinnerung im Protokoll; Regeln lassen sich pro Karte nachbearbeiten.
 - Keine Blocker, keine Interaktion mit gegnerischen Karten; Spielstand geht beim Neuladen verloren.
 
