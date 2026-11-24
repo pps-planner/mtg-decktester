@@ -227,6 +227,7 @@ body:not(.ai) .btn.ai,body:not(.ai) #aiCoach,body:not(.ai) #aiPwRow{display:none
   </nav>
 </header>
 <main>
+<div id="inviteBox"></div>
 
 <!-- DECK -->
 <section class="view on" id="v-deck">
@@ -1746,9 +1747,9 @@ async function netCheckTurn(){
 function netSetTok(h){const t=activeTok();net.tok={s:(t?t.s:0)+1,h};pushState();setTimeout(netSync,0)}
 function netPass(){const me=netMe();const order=netPeers().map(p=>p.peer).sort();if(!order.includes(me))order.push(me);order.sort();netSetTok(order[(order.indexOf(me)+1)%order.length])}
 function netStart(){const o=netPeers().map(p=>p.peer);if(!o.length)return;netSetTok(o[Math.floor(Math.random()*o.length)])}
-async function netJoin(){
+async function netJoin(nickArg,codeArg){
   if(!roomCap)return;if(!deck){net.err='Bitte zuerst ein Deck laden.';renderNet();return}
-  net.nick=nstr($('#netNick').value.trim(),24)||'Spieler';net.code=($('#netCode').value||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,20)||'tisch1';
+  net.nick=nstr((nickArg!==undefined?nickArg:$('#netNick').value).trim(),24)||'Spieler';net.code=(codeArg!==undefined?codeArg:($('#netCode').value||'')).toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,20)||'tisch1';
   lsSet('mtg_nick',net.nick);lsSet('mtg_code',net.code);net.err='';
   try{table=await roomCap.join('mtg-'+net.code);net.lobby=false}
   catch(e){{net.err='Beitritt fehlgeschlagen'+(e&&e.code?` (${e.code})`:'')+'. Supabase-URL/Key in config.js prüfen; pausierte Projekte im Supabase-Dashboard wieder aktivieren.';table=null;renderNet();return}}
@@ -1761,6 +1762,7 @@ async function netLeave(){const t=table;table=null;net.tok=null;net.last='';
   try{if(t&&net.lobby)await t.presence({v:null,bf:null,log:null,gy:null,tok:null,dealt:null,ack:null});else if(t&&t.leave)await t.leave()}catch(e){}
   netSync2Solo()}
 function renderNet(){
+  renderInvite();
   const el=$('#netBox');if(!el)return;
   if(!roomCap){el.innerHTML=`<div class="zone small mute">🌐 Online-Modus: Supabase ist noch nicht eingerichtet – Projekt-URL und Key in <b>config.js</b> eintragen (siehe README).</div>`;return}
   if(!table){el.innerHTML=`<div class="zone"><div class="zh"><span>🌐 Online spielen</span></div><div class="row">
@@ -1769,7 +1771,7 @@ function renderNet(){
     <button class="btn pri" data-net="join">Tisch beitreten</button></div>
     <p class="small mute" style="margin:8px 0 0">Alle Mitspieler öffnen diese Seite, laden ihr Deck und geben denselben Tisch-Code ein.</p>${net.err?`<div class="status err">${esc(net.err)}</div>`:''}</div>`;return}
   const ps=netPeers(),me=netMe(),t=activeTok(),h=netHolder();let conn=true;try{conn=table.connected()}catch(e){}
-  el.innerHTML=`<div class="zone"><div class="zh"><span>🌐 Tisch „${esc(net.code)}“${net.lobby?' (Lobby)':''} · ${ps.length} Spieler${conn?'':' · verbinde…'}</span><button class="btn sm" data-net="leave">Verlassen</button></div>
+  el.innerHTML=`<div class="zone"><div class="zh"><span>🌐 Tisch „${esc(net.code)}“${net.lobby?' (Lobby)':''} · ${ps.length} Spieler${conn?'':' · verbinde…'}</span><span class="row" style="gap:6px"><button class="btn sm pri" data-inv="open">Einladen</button><button class="btn sm" data-net="leave">Verlassen</button></span></div>
    <div class="row small">${ps.map(p=>`<span class="tag ${t&&t.h===p.peer?'gold':''}">${t&&t.h===p.peer?'▶ ':''}${esc(pnick(p))}${p.peer===me?' (du)':''}</span>`).join('')||'<span class="mute">Warte auf Mitspieler…</span>'}</div>
    <div class="row" style="margin-top:8px">${!t?`<button class="btn sm pri" data-net="start" ${ps.length<2?'disabled':''}>Startspieler auslosen</button><span class="small mute">Vorher: alle Starthand behalten.</span>`:
      (h&&h.gone?`<span class="small mute">Aktiver Spieler hat den Tisch verlassen.</span><button class="btn sm" data-net="take">Zug übernehmen</button>`:`<span class="small">${netMyTurn()?'<b style="color:var(--gold)">Du bist am Zug.</b>':`Am Zug: <b>${esc(pnick(h))}</b>`}</span>`)}</div>
@@ -1846,6 +1848,29 @@ function renderStack(){
   document.body.style.paddingBottom=(el.offsetHeight+8)+'px';
 }
 
+/* ---------- Einladen ---------- */
+const inviteUrl=()=>location.origin+location.pathname+'?tisch='+encodeURIComponent(net.code);
+function inviteSheet(){
+  const url=inviteUrl(),text=`Komm an meinen Magic-Tisch „${net.code}“ im MTG Decktester: Deck hochladen und losspielen.`;
+  sheet(`<h2 style="padding-right:30px">Mitspieler einladen</h2><p class="small mute">Wer den Link öffnet, wird durch die Schritte geführt: Deck hochladen → Karten &amp; Regeln werden automatisch geladen → an Tisch „${esc(net.code)}“ setzen.</p>
+   <div class="item" style="word-break:break-all;user-select:all">${esc(url)}</div>
+   <div class="acts">${navigator.share?'<button class="btn pri" data-inv="share">Link teilen…</button>':''}<button class="btn ${navigator.share?'':'pri'}" data-inv="copy">Link kopieren</button></div><div class="status" id="invStatus"></div>`);
+  net.invText=text;
+}
+function inviteReady(){if(!deck)return 0;const ns=[...new Set(allNames())].filter(n=>!basicOf(n));const miss=ns.filter(n=>card(n).missing).length;return miss>ns.length*0.5?1:2}
+function renderInvite(){
+  const el=$('#inviteBox');if(!el)return;
+  if(!net.invited||table){el.innerHTML='';return}
+  const st=inviteReady();const step=(n,done,act,t)=>`<div class="item" style="display:flex;gap:10px;align-items:center;${act?'border:1px solid var(--gold)':''}${done?';opacity:.7':''}"><b style="font:700 18px Cinzel,serif;color:${done?'var(--good)':'var(--gold)'};width:22px">${done?'✓':n}</b><div style="flex:1">${t}</div></div>`;
+  const rules=deck?[...new Set(allNames())].filter(n=>!basicOf(n)&&(fxOf(n)||HARD.has(n))).length:0;
+  el.innerHTML=`<div class="card" style="border-color:var(--gold)"><h2>Einladung an Tisch „${esc(net.code)}“</h2>
+   ${step(1,st>=1,st===0,st>=1?`Deck geladen: <b>${esc(deck.commander.map(x=>x.name).join(' + ')||'Deck')}</b> (${total(deck.main)+total(deck.commander)} Karten)`:'<b>Deck hochladen:</b> Moxfield-Liste unten einfügen und „Importieren“ tippen.')}
+   ${step(2,st>=2,st===1,st>=2?`Kartendaten und Regeln sind da (${rules} Karten mit automatischen Regeln).`:(st===1?'<b>Karten &amp; Regeln werden geladen…</b> Falls nichts passiert: „Kartendaten neu laden“.':'Karten &amp; Regeln werden nach dem Import automatisch geladen.'))}
+   ${step(3,false,st>=2,st>=2?`<div class="row"><input id="invNick" placeholder="Dein Name" maxlength="24" value="${esc(net.nick)}" style="flex:1;min-width:110px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px"><button class="btn pri" data-inv="join">An den Tisch setzen ▸</button></div>`:'Namen eingeben und an den Tisch setzen.')}
+   <div class="row" style="margin-top:6px"><button class="btn sm" data-inv="dismiss">Einladung ausblenden</button></div></div>`;
+}
+(function(){try{const q=new URLSearchParams(location.search).get('tisch');if(q){const c=q.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,20);if(c){net.code=c;net.invited=true;lsSet('mtg_code',c)}}}catch(e){}})();
+
 /* ---------- Import & glue ---------- */
 function importDeck(txt){
   const st=$('#importStatus');
@@ -1861,6 +1886,7 @@ function importDeck(txt){
   return true;
 }
 function renderAll(){
+  renderInvite();
   const has=!!deck;
   ['#noDeck1','#noDeck2','#noDeck3'].forEach(s=>$(s).style.display=has?'none':'');
   $('#anaWrap').style.display=has?'':'none';$('#gameWrap').style.display=has?'':'none';$('#chWrap').style.display=has?'':'none';
@@ -1928,6 +1954,13 @@ document.addEventListener('click',async e=>{
   const r1=t.closest('[data-reload1]');if(r1){closeSheet();location.hash='deck';loadCardData(true,[r1.dataset.reload1]);return}
   const cdx=t.closest('[data-card]');if(cdx&&!t.closest('#sheet')){sheet(cardDetailHTML(cdx.dataset.card));return}
   const sk=t.closest('[data-stk]');if(sk&&game){const st=netStack(),top=st[st.length-1];if(top){if(sk.dataset.stk==='ok'){net.pass=top.id;renderGame()}else{net.force=top.id;stackTick()}}return}
+  const iv=t.closest('[data-inv]');if(iv){const k=iv.dataset.inv;
+    if(k==='open')inviteSheet();
+    else if(k==='share'){try{await navigator.share({title:'MTG Decktester',text:net.invText,url:inviteUrl()})}catch(e){}}
+    else if(k==='copy'){try{await navigator.clipboard.writeText(inviteUrl());$('#invStatus').textContent='Link kopiert ✓'}catch(e){$('#invStatus').textContent='Kopieren nicht möglich – Link oben markieren und kopieren.'}}
+    else if(k==='dismiss'){net.invited=false;renderInvite()}
+    else if(k==='join'){const n=$('#invNick').value;location.hash='testen';await netJoin(n,net.code);window.scrollTo(0,0)}
+    return}
   const nb=t.closest('[data-net]');if(nb){const k=nb.dataset.net;if(k==='join')netJoin();else if(k==='leave')netLeave();else if(k==='start')netStart();else if(k==='take')netSetTok(netMe());return}
   if(!game)return;
   const lf=t.closest('[data-life]');if(lf){game.life+=+lf.dataset.life;renderGame();return}
@@ -1981,7 +2014,7 @@ $('#btnLearn').onclick=()=>{const ns=[...new Set(allNames())].filter(needsRules)
   [...Object.keys(LANDFALL),...Object.keys(ETB),...Object.keys(SPELL),...Object.keys(FETCH),"Urza's Cave",'Zuran Orb','Sylvan Safekeeper','Aftermath Analyst','Strip Mine','Mina and Denn, Wildborn','Exploration','Azusa, Lost but Seeking','Dryad of the Ilysian Grove','Oracle of Mul Daya','Crucible of Worlds','Ramunap Excavator','Ancient Greenwarden','Traveling Chocobo','Amulet of Vigor','Horizon Explorer','Yavimaya, Cradle of Growth','Ashaya, Soul of the Wild','Ojer Axonil, Deepest Might','Hexhaven Invigorator','Conduit of Worlds','Stomping Ground','Boseiju, Who Endures','Cinder Glade','Spire Garden','Shifting Woodland','Vesuva','Sol Ring','Arcane Signet','Command Tower'].forEach(n=>HARD.add(n));
   const last=lsGet('mtg_last_deck',null);
   if(last){$('#decktext').value=last;importDeck(last)}
-  else{try{const t=await (await fetch('cards/deck.txt')).text();$('#decktext').value=t;importDeck(t)}catch(e){}}
+  else if(!net.invited){try{const t=await (await fetch('cards/deck.txt')).text();$('#decktext').value=t;importDeck(t)}catch(e){}}
   showView();
 })();
 </script>
