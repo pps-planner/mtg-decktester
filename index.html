@@ -579,7 +579,7 @@ async function loadCardDataScryfall(force,only){
   const st=$('#dataStatus');
   const names=only||[...new Set(allNames())].filter(n=>!basicOf(n)&&!BUNDLE[n.toLowerCase()]&&(force||!DB[n.toLowerCase()]||DB[n.toLowerCase()].u||!DB[n.toLowerCase()].img));
   if(!names.length){st.className='status';st.textContent='Alle Kartendaten vorhanden.';const ar=autoBuildRules();if(ar&&ar.built)$('#learnStatus').textContent=`Trigger automatisch erstellt: ${ar.built} Karten (${ar.auto} Effekte automatisch, ${ar.manual} als Erinnerung von Hand).`;renderAll();return}
-  st.className='status';let done=0,miss=[];
+  st.className='status';let done=0,miss=[];const aliased=[];
   try{
     for(let i=0;i<names.length;i+=70){
       const part=names.slice(i,i+70);st.innerHTML=`<span class="spin"></span> Lade Kartendaten von Scryfall… ${done}/${names.length}`;
@@ -587,12 +587,21 @@ async function loadCardDataScryfall(force,only){
       if(!r.ok)throw new Error('Scryfall antwortet mit '+r.status);
       const j=await r.json();
       for(const n of part){const key=norm(n.split(' // ')[0]);const c=(j.data||[]).find(x=>norm(x.name)===norm(n)||norm(x.name.split(' // ')[0])===key||(x.card_faces||[]).some(fc=>norm(fc.name)===key));
-        if(c)DB[n.toLowerCase()]=sfToCard(c,n);else{miss.push(n);if(!DB[n.toLowerCase()])DB[n.toLowerCase()]={n,u:true,k:[],f:[],m:[],r:[],v:0,c:'',t:'?',s:''}}}
+        if(c)DB[n.toLowerCase()]=sfToCard(c,n);else{
+          // Alternativnamen: Flavor-Namen (z. B. Marvel/Godzilla), Namen in anderen Sprachen, Tippfehler
+          let alt=null;const q=encodeURIComponent(n.split(' // ')[0]);
+          try{st.innerHTML=`<span class="spin"></span> Suche „${esc(n)}“ unter anderem Namen…`;
+            let r2=await fetch('https://api.scryfall.com/cards/named?fuzzy='+q);await sleep(110);
+            if(r2.ok)alt=await r2.json();
+            else{r2=await fetch('https://api.scryfall.com/cards/search?q='+encodeURIComponent('!"'+n.split(' // ')[0]+'"')+'&include_multilingual=true&unique=cards');await sleep(110);if(r2.ok){const j2=await r2.json();alt=(j2.data||[])[0]||null}}
+          }catch(e){}
+          if(alt&&alt.object==='card'){const e=sfToCard(alt,n);e.aka=alt.name;DB[n.toLowerCase()]=e;aliased.push(`${n} = ${alt.name}`)}
+          else{miss.push(n);if(!DB[n.toLowerCase()])DB[n.toLowerCase()]={n,u:true,k:[],f:[],m:[],r:[],v:0,c:'',t:'?',s:''}}}}
       done+=part.length;await sleep(120);
     }
     lsSet('mtg_cards_v1',DB);const ar=autoBuildRules();if(ar)$('#learnStatus').textContent=`Trigger automatisch erstellt: ${ar.built} Karten (${ar.auto} Effekte automatisch, ${ar.manual} als Erinnerung von Hand).`;
     st.className='status'+(miss.length?' err':'');
-    st.textContent=miss.length?`Fertig – bei Scryfall nicht gefunden: ${miss.slice(0,6).join(', ')}${miss.length>6?' …':''}. Schreibweise prüfen oder Karte antippen → Daten eintragen.`:'Kartendaten von Scryfall geladen ✓';
+    st.textContent=miss.length?`Fertig – bei Scryfall nicht gefunden: ${miss.slice(0,6).join(', ')}${miss.length>6?' …':''}. Schreibweise prüfen oder Karte antippen → Daten eintragen.`:'Kartendaten von Scryfall geladen ✓'+(aliased.length?` · unter anderem Namen gefunden: ${aliased.slice(0,4).join('; ')}${aliased.length>4?' …':''}`:'');
   }catch(e){st.className='status err';st.textContent='Scryfall nicht erreichbar: '+(e.message||e)}
   renderAll();
 }
@@ -826,7 +835,7 @@ function renderHands(){
 
 /* ---------- Regel-Engine (lernbare Effekte) ---------- */
 let FX={};let FXL=lsGet('mtg_fx_v1',{});
-const fxOf=n=>FXL[n]||FX[n]||null;
+const fxOf=n=>{if(FXL[n]||FX[n])return FXL[n]||FX[n];const a=(typeof BUNDLE!=='undefined'&&(BUNDLE[String(n).toLowerCase()]||DB[String(n).toLowerCase()])||{}).aka;return a?(FX[a]||null):null};
 const fxStatic=(c,k)=>{const f=fxOf(bname(c));return f&&f.static?f.static[k]:undefined};
 const anyStatic=k=>game.bf.some(c=>fxStatic(c,k));
 const typesOf=c=>(cd(c).t||'')+' '+(c.types||'');
@@ -1425,7 +1434,7 @@ function cardDetailHTML(name){
   if(a){const s=(a.starke_karten||[]).find(x=>(x.name||'').toLowerCase()===name.toLowerCase());const w=(a.schwache_karten||[]).find(x=>(x.name||'').toLowerCase()===name.toLowerCase());
     if(s)v=`<div class="item"><span class="tag good">stark</span> ${esc(s.warum)}</div>`;if(w)v=`<div class="item"><span class="tag bad">schwach</span> ${esc(w.warum)}${w.ersatz?`<br>→ <b>Besser:</b> ${esc(w.ersatz)}`:''}</div>`}
   const big=imgOf(name,true);
-  return `${big?(d.k.includes('Creature')?`<div class="bigwrap live"><img class="big" src="${big}" alt="${esc(name)}">${artHTML(big)}</div>`:`<img class="big" src="${big}" alt="${esc(name)}">`):''}<h2 style="padding-right:30px">${esc(name)}</h2><div>${pips(d.c)}</div><div class="mute small" style="margin:6px 0">${esc(d.t)}${d.p?' · '+esc(d.p):''}${d.missing?'':' · MW '+d.v}</div>
+  return `${big?(d.k.includes('Creature')?`<div class="bigwrap live"><img class="big" src="${big}" alt="${esc(name)}">${artHTML(big)}</div>`:`<img class="big" src="${big}" alt="${esc(name)}">`):''}<h2 style="padding-right:30px">${esc(name)}</h2><div>${pips(d.c)}</div>${d.aka?`<div class="small" style="margin-top:4px">Offizieller Name: <b>${esc(d.aka)}</b></div>`:''}<div class="mute small" style="margin:6px 0">${esc(d.t)}${d.p?' · '+esc(d.p):''}${d.missing?'':' · MW '+d.v}</div>
    <p style="margin:8px 0;white-space:pre-wrap">${esc(d.s||d.o||(d.missing?'Keine Kartendaten geladen.':''))}</p>${d.o&&d.s?`<details class="small"><summary class="mute" style="cursor:pointer">Originaltext (Oracle)</summary><p style="white-space:pre-wrap;margin:6px 0">${esc(d.o)}</p></details>`:''}
    <div class="row" style="gap:5px">${d.r.map(r=>`<span class="tag gold">${ROLE_DE[r]||r}</span>`).join('')}</div>${v}
    <h3>Automatische Regeln</h3>${HARD.has(name)&&!fxOf(name)?'<p class="small mute">Fest eingebaut (Landfall-/Ramp-Logik).</p>':fxText(fxOf(name))}<button class="btn sm" data-rules="${esc(name)}">Regeln ansehen/bearbeiten</button>
@@ -1577,6 +1586,7 @@ function parseCard(name,d){
       const r=cond?{acts:[{manual:eff}],auto:false}:parseEffect(eff);
       for(const c of conds){add('trig',{...c,do:r.acts});}count(r);continue}
     if(/^Enchant creature/i.test(line)){stat.aura='creature';continue}
+    if(/^You may have ~ enter( the battlefield)? as a copy of (a|any|another) creature/i.test(line)){stat.clone=true;info.auto++;continue}
     if((m=line.match(/^Equip (\{[^ ]+)/))){stat.equip=m[1];continue}
     if((m=line.match(/^You may play (an|two|three) additional lands? on each of your turns/i))){stat.extra_land=m[1]==='an'?1:pnum(m[1]);info.auto++;continue}
     if(/^You may play lands from your graveyard/i.test(line)){stat.play_lands_from_gy=true;info.auto++;continue}
@@ -1596,8 +1606,8 @@ function autoBuildRules(){
   if(!deck)return null;let built=0,auto=0,manual=0;
   for(const n of new Set(allNames())){
     if(basicOf(n)||FX[n]||HARD.has(n)||(FXL[n]&&!FXL[n].auto))continue;
-    const d=card(n);if(d.missing||!d.o)continue;
-    const r=parseCard(n,d);FXL[n]={...(r.fx||{}),auto:true,info:r.info};
+    const d=card(n);if(d.missing||!d.o)continue;if(d.aka&&(FX[d.aka]||HARD.has(d.aka)))continue;
+    const r=parseCard(d.aka||n,d);FXL[n]={...(r.fx||{}),auto:true,info:r.info};
     if(r.fx)built++;auto+=r.info.auto;manual+=r.info.manual+r.info.skipped;
   }
   lsSet('mtg_fx_v1',FXL);return {built,auto,manual};
